@@ -72,15 +72,14 @@
     <div class="hm-nav-right">
 
       <!-- 1. Mobile logged-out CTAs (always in navbar on mobile) -->
-      <div class="hm-nav-cta" data-auth="logged-out" aria-label="Get started">
-        <a href="/login.html" class="hm-btn hm-btn--ghost hm-btn--xs">Sign in</a>
-        <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--xs">Get started</a>
+      <!-- 1. Mobile logged-out CTA (always visible on mobile) -->
+      <div class="hm-nav-cta" data-auth="logged-out">
+        <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--xs">Sign in</a>
       </div>
 
-      <!-- 2. Desktop logged-out CTAs (hidden on mobile) -->
+      <!-- 2. Desktop logged-out CTA (hidden on mobile, right-aligned via hm-nav-right) -->
       <div class="hm-nav-actions" data-auth="logged-out">
-        <a href="/login.html" class="hm-btn hm-btn--ghost hm-btn--sm">Sign in</a>
-        <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--sm">Get started</a>
+        <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--sm">Sign in</a>
       </div>
 
       <!-- 3. Logged-in avatar + dropdown (all viewports; JS shows when signed in) -->
