@@ -1,0 +1,39 @@
+<nav class="hm-navbar" id="hm-navbar">
+  <div class="hm-container hm-navbar__inner">
+    <a href="/index.html" class="hm-brand" aria-label="HallMate home">
+      <span class="hm-brand__mark">H</span>
+      <span>HallMate</span>
+    </a>
+
+    <button class="hm-nav-toggle" type="button" id="hm-nav-toggle" aria-controls="hm-navbar" aria-expanded="false" aria-label="Open menu">
+      <span></span>
+    </button>
+
+    <ul class="hm-nav-links" id="hm-nav-links">
+      <li><a href="/index.html"      data-route="index">Home</a></li>
+      <li><a href="/dashboard.html"  data-route="dashboard">Find Mates <span class="hm-nav-badge" id="hm-requests-badge" hidden></span></a></li>
+      <li><a href="/profile.html"    data-route="profile">Profile</a></li>
+    </ul>
+
+    <div class="hm-nav-actions">
+      <a href="/login.html" class="hm-btn hm-btn--ghost hm-btn--sm" data-auth="logged-out">Sign in</a>
+      <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--sm" data-auth="logged-out">Get started</a>
+
+      <a href="/profile.html" class="hm-btn hm-btn--ghost hm-btn--sm" data-auth="logged-in" hidden>My profile</a>
+      <button type="button" class="hm-btn hm-btn--soft hm-btn--sm" data-action="logout" data-auth="logged-in" hidden>Log out</button>
+    </div>
+  </div>
+</nav>
+
+<script>
+  (function () {
+    const nav = document.getElementById('hm-navbar');
+    const toggle = document.getElementById('hm-nav-toggle');
+    if (!nav || !toggle) return;
+    toggle.addEventListener('click', function () {
+      const open = nav.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    });
+  })();
+</script>

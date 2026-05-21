@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#FF6B35" />
+  <title>Find centre mates — HallMate</title>
+  <meta name="description" content="Discover NEET PG students assigned to your exam centre and connect with them." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/css/style.css" rel="stylesheet" />
+  <link href="/css/components.css" rel="stylesheet" />
+  <link href="/css/dashboard.css" rel="stylesheet" />
+  <link href="/css/responsive.css" rel="stylesheet" />
+
+  <link rel="icon" href="/assets/logos/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+  <div data-include="navbar"></div>
+
+  <main class="hm-page" id="hm-main">
+    <div class="hm-container">
+
+      <header class="hm-feed-header">
+        <div>
+          <span class="hm-eyebrow">NEET PG 2026</span>
+          <h1 style="margin-top: 12px;">Find HallMates</h1>
+          <p class="hm-text-muted">
+            Students registered at the same exam centre.
+            <span id="hm-results-count" class="hm-results-count"></span>
+          </p>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0">
+          <button class="hm-btn hm-btn--ghost hm-btn--sm" type="button" id="hm-filter-clear">Clear filters</button>
+          <button class="hm-btn hm-btn--primary hm-btn--sm" type="button" id="hm-refresh">Refresh</button>
+        </div>
+      </header>
+
+      <!-- Incoming connection requests — hidden when empty -->
+      <div id="hm-requests-banner" hidden></div>
+
+      <section class="hm-dashboard">
+
+        <!-- FILTER SIDEBAR -->
+        <aside aria-label="Filter mates">
+          <div class="hm-sidebar">
+            <p class="hm-sidebar__title">Filter by</p>
+
+            <div class="hm-sidebar__fields">
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-state">State</label>
+                <select class="hm-select" id="hm-filter-state">
+                  <option value="">All states</option>
+                  <option>Andhra Pradesh</option>
+                  <option>Arunachal Pradesh</option>
+                  <option>Assam</option>
+                  <option>Bihar</option>
+                  <option>Chhattisgarh</option>
+                  <option>Goa</option>
+                  <option>Gujarat</option>
+                  <option>Haryana</option>
+                  <option>Himachal Pradesh</option>
+                  <option>Jharkhand</option>
+                  <option>Karnataka</option>
+                  <option>Kerala</option>
+                  <option>Madhya Pradesh</option>
+                  <option>Maharashtra</option>
+                  <option>Manipur</option>
+                  <option>Meghalaya</option>
+                  <option>Mizoram</option>
+                  <option>Nagaland</option>
+                  <option>Odisha</option>
+                  <option>Punjab</option>
+                  <option>Rajasthan</option>
+                  <option>Sikkim</option>
+                  <option>Tamil Nadu</option>
+                  <option>Telangana</option>
+                  <option>Tripura</option>
+                  <option>Uttar Pradesh</option>
+                  <option>Uttarakhand</option>
+                  <option>West Bengal</option>
+                  <option>Delhi</option>
+                  <option>Jammu &amp; Kashmir</option>
+                  <option>Ladakh</option>
+                  <option>Chandigarh</option>
+                  <option>Puducherry</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-district">District</label>
+                <input class="hm-input" id="hm-filter-district" type="text" placeholder="Search district…" autocomplete="off" />
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-center">Exam centre</label>
+                <input class="hm-input" id="hm-filter-center" type="text" placeholder="Search centre…" autocomplete="off" />
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-gender">Gender</label>
+                <select class="hm-select" id="hm-filter-gender">
+                  <option value="">Any</option>
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- MATE FEED -->
+        <section aria-label="HallMate list" aria-live="polite">
+          <div class="hm-grid-cards" id="hm-mates-grid"></div>
+        </section>
+
+      </section>
+    </div>
+  </main>
+
+  <div data-include="footer"></div>
+
+  <!-- Profile detail modal -->
+  <div id="hm-profile-modal" class="hm-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="hm-modal-name">
+    <div class="hm-modal" role="document">
+      <button class="hm-modal__close" id="hm-modal-close" aria-label="Close profile">&times;</button>
+
+      <div class="hm-modal__header">
+        <div class="hm-avatar hm-avatar--lg" id="hm-modal-avatar" aria-hidden="true"></div>
+        <div class="hm-modal__header-info">
+          <h2 class="hm-modal__name" id="hm-modal-name"></h2>
+          <div class="d-flex gap-2 flex-wrap mt-1">
+            <span class="hm-badge" id="hm-modal-gender-badge"></span>
+            <span class="hm-badge hm-badge--success">✓ Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hm-modal__body">
+        <div class="hm-modal__row">
+          <span class="hm-modal__label">State</span>
+          <span id="hm-modal-state"></span>
+        </div>
+        <div class="hm-modal__row">
+          <span class="hm-modal__label">District</span>
+          <span id="hm-modal-district"></span>
+        </div>
+        <div class="hm-modal__row">
+          <span class="hm-modal__label">Exam centre</span>
+          <span id="hm-modal-center" class="hm-modal__center-val"></span>
+        </div>
+        <div class="hm-modal__row">
+          <span class="hm-modal__label">Joined</span>
+          <span id="hm-modal-joined"></span>
+        </div>
+        <div class="hm-modal__row hm-modal__row--phone">
+          <span class="hm-modal__label">Contact</span>
+          <div>
+            <span id="hm-modal-phone" class="hm-modal__phone"></span>
+            <div id="hm-modal-contact-reveal"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hm-modal__footer">
+        <div id="hm-modal-actions" class="hm-modal__actions"></div>
+        <p class="hm-modal__privacy" id="hm-modal-privacy">
+          🔒 Full number visible only after mutual connection.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/dashboard.js"></script>
+</body>
+</html>

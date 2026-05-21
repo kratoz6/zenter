@@ -1,0 +1,111 @@
+/* HallMate — Mobile-first responsive overrides.
+   Breakpoints:
+     - default (mobile)
+     - sm: >= 576px
+     - md: >= 768px
+     - lg: >= 992px
+     - xl: >= 1200px
+   Loaded LAST so overrides win over component styles. */
+
+/* ============================================================
+   MOBILE BASE (<= 575.98px)  — adjustments off the default desktop layout
+============================================================ */
+@media (max-width: 991.98px) {
+  /* Navbar collapses to icon toggle + drawer */
+  .hm-nav-toggle { display: inline-flex; }
+  .hm-nav-links,
+  .hm-nav-actions {
+    position: fixed;
+    inset: var(--hm-navbar-h) 0 0 0;
+    background: var(--hm-surface);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--hm-space-4);
+    border-top: 1px solid var(--hm-border);
+    transform: translateX(100%);
+    transition: transform var(--hm-duration-base) var(--hm-ease);
+    overflow-y: auto;
+    z-index: 1029;
+  }
+  .hm-navbar.is-open .hm-nav-links,
+  .hm-navbar.is-open .hm-nav-actions {
+    transform: translateX(0);
+  }
+  .hm-nav-actions { top: auto; bottom: 0; transform: translateX(100%); }
+  .hm-navbar.is-open .hm-nav-actions { transform: translateX(0); padding-top: var(--hm-space-3); border-top: 1px solid var(--hm-border); }
+  .hm-nav-links a {
+    display: block;
+    padding: 14px 12px;
+    border-radius: var(--hm-radius-md);
+    font-size: var(--hm-text-base);
+  }
+
+  /* Dashboard layouts go single column */
+  .hm-dashboard { grid-template-columns: 1fr; }
+  .hm-sidebar { position: static; top: auto; }
+
+  /* Filter fields go 2-up on mobile so they don't eat too much vertical space. */
+  .hm-sidebar__fields {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--hm-space-3);
+  }
+
+  /* Profile goes single column */
+  .hm-profile { grid-template-columns: 1fr; }
+
+  /* Footer columns stack */
+  .hm-footer__grid { grid-template-columns: 1fr 1fr; }
+
+  /* Auth screen drops the aside */
+  .hm-auth { grid-template-columns: 1fr; }
+  .hm-auth__aside { display: none; }
+}
+
+@media (max-width: 767.98px) {
+  :root {
+    --hm-text-3xl: 30px;
+    --hm-text-2xl: 24px;
+    --hm-navbar-h: 64px;
+  }
+
+  .hm-page { padding-top: var(--hm-space-5); padding-bottom: var(--hm-space-6); }
+  .hm-section { padding: var(--hm-space-6) 0; }
+
+  .hm-footer__grid { grid-template-columns: 1fr; gap: var(--hm-space-5); }
+  .hm-footer__legal { flex-direction: column; align-items: flex-start; }
+
+  .hm-feed-header { flex-direction: column; align-items: flex-start; }
+
+  .hm-grid-cards { grid-template-columns: 1fr; }
+
+  .hm-kv { grid-template-columns: 1fr; row-gap: 4px; }
+  .hm-kv dt { margin-top: 8px; }
+
+  .hm-auth__card { padding: var(--hm-space-5); border-radius: var(--hm-radius-lg); }
+  .hm-otp__cell { width: 40px; height: 52px; font-size: var(--hm-text-lg); }
+
+  .hm-toast-container { top: 16px; right: 16px; left: 16px; }
+  .hm-toast { max-width: 100%; }
+}
+
+@media (min-width: 992px) {
+  .hm-page { padding-top: var(--hm-space-8); }
+}
+
+/* Reduced motion — honor user preference. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Print — quick hygiene; not a print product but avoids ugly outputs. */
+@media print {
+  .hm-navbar, .hm-footer, .hm-toast-container, .hm-loader-overlay { display: none !important; }
+  body { background: #fff; }
+}

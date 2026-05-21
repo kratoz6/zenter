@@ -1,0 +1,54 @@
+<footer class="hm-footer">
+  <div class="hm-container">
+    <div class="hm-footer__grid">
+      <div class="hm-footer__col">
+        <a href="/index.html" class="hm-brand" aria-label="HallMate home">
+          <span class="hm-brand__mark">H</span>
+          <span>HallMate</span>
+        </a>
+        <p class="hm-text-muted" style="margin-top: 12px; max-width: 320px;">
+          Find your NEET PG exam centre mates. Travel, stay, and walk into the hall together — safely.
+        </p>
+      </div>
+
+      <div class="hm-footer__col">
+        <h5>Product</h5>
+        <ul>
+          <li><a href="/index.html#how-it-works">How it works</a></li>
+          <li><a href="/index.html#safety">Safety</a></li>
+          <li><a href="/dashboard.html">Find mates</a></li>
+        </ul>
+      </div>
+
+      <div class="hm-footer__col">
+        <h5>Company</h5>
+        <ul>
+          <li><a href="/index.html#about">About</a></li>
+          <li><a href="mailto:support@hallmate.in">Contact</a></li>
+          <li><a href="/index.html#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="hm-footer__col">
+        <h5>Legal</h5>
+        <ul>
+          <li><a href="/index.html#privacy">Privacy</a></li>
+          <li><a href="/index.html#terms">Terms</a></li>
+          <li><a href="/index.html#community">Community guidelines</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="hm-footer__legal">
+      <span>© <span id="hm-year"></span> HallMate. Built for NEET PG aspirants.</span>
+      <span>Made with care in India.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var y = document.getElementById('hm-year');
+    if (y) y.textContent = new Date().getFullYear();
+  })();
+</script>

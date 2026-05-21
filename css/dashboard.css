@@ -1,0 +1,302 @@
+/* HallMate — Dashboard + profile page styling. */
+
+.hm-dashboard {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--hm-space-6);
+  align-items: start;
+}
+
+.hm-sidebar {
+  position: sticky;
+  top: calc(var(--hm-navbar-h) + var(--hm-space-4));
+  background: var(--hm-surface);
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-lg);
+  padding: var(--hm-space-5);
+  box-shadow: var(--hm-shadow-xs);
+}
+.hm-sidebar__title {
+  font-size: var(--hm-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--hm-text-subtle);
+  margin-bottom: var(--hm-space-3);
+  font-weight: 700;
+}
+.hm-sidebar + .hm-sidebar { margin-top: var(--hm-space-4); }
+
+/* Filter fields — stacked on desktop, 2-col grid on mobile when sidebar is full-width. */
+.hm-sidebar__fields { display: flex; flex-direction: column; gap: var(--hm-space-3); }
+.hm-sidebar__fields .hm-field { margin-bottom: 0; }
+
+.hm-feed-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--hm-space-4);
+  margin-bottom: var(--hm-space-5);
+}
+.hm-feed-header h1 { margin-bottom: 4px; }
+.hm-feed-header p  { margin-bottom: 0; }
+
+.hm-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--hm-space-4);
+}
+
+/* ── Mate card ── */
+.hm-mate {
+  display: flex; flex-direction: column;
+  gap: var(--hm-space-3);
+  min-height: 176px;          /* consistent height prevents layout jumps */
+}
+.hm-mate__head   { display: flex; align-items: center; gap: var(--hm-space-3); }
+.hm-mate__name   { font-weight: 600; font-size: var(--hm-text-base); color: var(--hm-text); margin: 0; }
+.hm-mate__sub    { font-size: var(--hm-text-sm); color: var(--hm-text-subtle); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-mate__meta   { display: flex; flex-wrap: wrap; gap: 8px; }
+.hm-mate__actions { display: flex; gap: var(--hm-space-2); margin-top: var(--hm-space-2); }
+.hm-mate__center {
+  font-size: var(--hm-text-sm); color: var(--hm-text-muted);
+  margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hm-mate__footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: auto; padding-top: var(--hm-space-3);
+  border-top: 1px solid var(--hm-border);
+}
+.hm-mate__joined { font-size: var(--hm-text-xs); color: var(--hm-text-subtle); }
+.hm-mate__view   {
+  font-size: var(--hm-text-xs); font-weight: 600;
+  color: var(--hm-primary);
+  opacity: 0;
+  transition: opacity var(--hm-duration-fast) var(--hm-ease);
+}
+.hm-card--interactive:hover .hm-mate__view,
+.hm-card--interactive:focus-visible .hm-mate__view { opacity: 1; }
+
+/* Exam centre chip — slightly wider chip variant. */
+.hm-chip--center {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   PROFILE MODAL
+============================================================ */
+.hm-modal-overlay {
+  position: fixed; inset: 0; z-index: 1050;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--hm-space-4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--hm-duration-base) var(--hm-ease);
+}
+.hm-modal-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.hm-modal {
+  position: relative;
+  width: 100%; max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--hm-surface);
+  border-radius: var(--hm-radius-xl);
+  box-shadow: var(--hm-shadow-lg);
+  transform: scale(0.96) translateY(10px);
+  transition: transform var(--hm-duration-base) var(--hm-ease);
+  overscroll-behavior: contain;
+}
+.hm-modal-overlay.is-open .hm-modal {
+  transform: scale(1) translateY(0);
+}
+
+.hm-modal__close {
+  position: absolute; top: 16px; right: 16px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--hm-border);
+  background: var(--hm-surface-2);
+  color: var(--hm-text-muted);
+  font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background var(--hm-duration-fast) var(--hm-ease),
+              color var(--hm-duration-fast) var(--hm-ease);
+}
+.hm-modal__close:hover { background: var(--hm-border); color: var(--hm-text); }
+
+.hm-modal__header {
+  display: flex; align-items: center; gap: var(--hm-space-4);
+  padding: var(--hm-space-6) var(--hm-space-5) var(--hm-space-4);
+  border-bottom: 1px solid var(--hm-border);
+}
+.hm-modal__header-info { min-width: 0; flex: 1; }
+.hm-modal__name {
+  font-size: var(--hm-text-xl);
+  font-family: var(--hm-font-display);
+  margin: 0; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.hm-modal__body { padding: var(--hm-space-4) var(--hm-space-5); }
+.hm-modal__row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--hm-space-3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hm-border);
+  align-items: start;
+}
+.hm-modal__row:last-child { border-bottom: 0; }
+.hm-modal__label {
+  font-size: var(--hm-text-sm); font-weight: 600;
+  color: var(--hm-text-subtle);
+}
+.hm-modal__row--phone .hm-modal__label { color: var(--hm-text-subtle); }
+.hm-modal__phone {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--hm-text-sm);
+  color: var(--hm-text-muted);
+  letter-spacing: 0.04em;
+}
+.hm-modal__center-val { font-size: var(--hm-text-sm); color: var(--hm-text); }
+
+.hm-modal__footer {
+  padding: var(--hm-space-3) var(--hm-space-5) var(--hm-space-5);
+}
+.hm-modal__privacy {
+  font-size: var(--hm-text-xs);
+  color: var(--hm-text-subtle);
+  background: var(--hm-surface-2);
+  border-radius: var(--hm-radius-md);
+  padding: 10px 14px;
+  margin: 0;
+}
+
+/* ============================================================
+   INCOMING REQUESTS BANNER
+============================================================ */
+.hm-requests-banner {
+  background: var(--hm-surface);
+  border: 1px solid var(--hm-border);
+  border-left: 3px solid var(--hm-primary);
+  border-radius: var(--hm-radius-lg);
+  padding: var(--hm-space-4) var(--hm-space-5);
+  margin-bottom: var(--hm-space-5);
+  box-shadow: var(--hm-shadow-xs);
+}
+.hm-requests-banner__title {
+  font-size: var(--hm-text-sm); font-weight: 600;
+  color: var(--hm-text); margin: 0 0 var(--hm-space-3);
+}
+.hm-requests-banner__list { display: flex; flex-direction: column; gap: var(--hm-space-3); }
+
+.hm-request-item {
+  display: flex; align-items: center; gap: var(--hm-space-3);
+  padding: var(--hm-space-3);
+  background: var(--hm-surface-2);
+  border-radius: var(--hm-radius-md);
+}
+.hm-request-item__name {
+  flex: 1; min-width: 0;
+  font-weight: 600; font-size: var(--hm-text-sm);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hm-request-item__actions { display: flex; gap: var(--hm-space-2); flex-shrink: 0; }
+
+/* ── Navbar badge ── */
+.hm-nav-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px;
+  background: var(--hm-primary); color: #fff;
+  border-radius: 9px;
+  font-size: 10px; font-weight: 700;
+  padding: 0 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* ── Card CTA ── */
+.hm-mate__cta { flex-shrink: 0; }
+
+/* ── Modal actions section ── */
+.hm-modal__actions {
+  display: flex; flex-direction: column;
+  gap: var(--hm-space-2);
+  margin-bottom: var(--hm-space-3);
+}
+
+/* ── Revealed contact ── */
+.hm-contact-revealed {
+  display: flex; flex-direction: column; gap: var(--hm-space-2);
+}
+.hm-contact-revealed__number {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: var(--hm-text-base);
+  font-weight: 700;
+  color: var(--hm-text);
+  letter-spacing: 0.04em;
+}
+.hm-contact-revealed__links { display: flex; gap: var(--hm-space-2); flex-wrap: wrap; }
+
+/* Results count inline with subtitle. */
+.hm-results-count {
+  display: inline-block;
+  font-size: var(--hm-text-xs);
+  font-weight: 600;
+  color: var(--hm-primary);
+  background: var(--hm-primary-100);
+  padding: 2px 10px;
+  border-radius: var(--hm-radius-pill);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* Empty + error states. */
+.hm-empty {
+  text-align: center;
+  padding: var(--hm-space-7) var(--hm-space-5);
+  background: var(--hm-surface);
+  border: 1px dashed var(--hm-border-strong);
+  border-radius: var(--hm-radius-lg);
+}
+.hm-empty__icon {
+  width: 64px; height: 64px; margin: 0 auto var(--hm-space-3);
+  border-radius: var(--hm-radius-lg);
+  background: var(--hm-primary-100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+
+/* ============================================================
+   PROFILE PAGE
+============================================================ */
+.hm-profile {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--hm-space-6);
+  align-items: start;
+}
+.hm-profile-card { text-align: center; }
+.hm-profile-card .hm-avatar { margin: 0 auto var(--hm-space-3); }
+.hm-profile-card__name { font-size: var(--hm-text-xl); margin-bottom: 4px; }
+.hm-profile-card__phone { color: var(--hm-text-subtle); font-size: var(--hm-text-sm); margin-bottom: var(--hm-space-3); }
+
+.hm-section-card { margin-bottom: var(--hm-space-4); }
+.hm-section-card__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--hm-space-4);
+}
+.hm-section-card__header h3 { margin: 0; }
+
+.hm-kv { display: grid; grid-template-columns: 160px 1fr; row-gap: 12px; column-gap: var(--hm-space-4); }
+.hm-kv dt { color: var(--hm-text-subtle); font-size: var(--hm-text-sm); font-weight: 500; }
+.hm-kv dd { margin: 0; color: var(--hm-text); font-weight: 500; }
