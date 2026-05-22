@@ -194,7 +194,14 @@ async function saveAll(saveBtn) {
     for (const f of sec.fields) {
       const dd  = document.getElementById(f.ddId);
       const inp = dd?.querySelector('[data-field-key]');
-      if (!inp) continue;
+      if (!inp) {
+        // Config/DOM mismatch — a SECTIONS field has no matching <dd> in
+        // the markup. Surface it loudly rather than silently dropping the
+        // value from the save payload.
+        console.error(`[profile] Missing editable input for field "${f.key}" (expected <dd id="${f.ddId}">)`);
+        valid = false;
+        continue;
+      }
       const v = inp.value.trim() || null;
       if (f.required && !v) {
         inp.classList.add('hm-input--invalid');
