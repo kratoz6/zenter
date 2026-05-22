@@ -60,11 +60,13 @@ const SECTIONS = {
       {
         key: 'exam_centre_state', ddId: 'hm-kv-exam-state', type: 'select',
         options: STATES, prompt: 'Add exam centre state',
+        fallback: 'state',     // show home state for old users without exam_centre_state
       },
       {
         // options: [] → populated dynamically by wireDistrictCascade after render
         key: 'exam_centre_district', ddId: 'hm-kv-exam-district', type: 'select',
         options: [], prompt: 'Add exam centre district',
+        fallback: 'district',  // show home district for old users without exam_centre_district
       },
       {
         key: 'exam_center', ddId: 'hm-kv-exam-center', type: 'text',
@@ -146,7 +148,10 @@ function hydrateAll() {
 
 function hydrateSection(sec) {
   sec.fields.forEach(f => {
-    setDd(f.ddId, trimOrNull(profileData[f.key]), f.prompt);
+    // Use fallback field for backward compat (old users without exam_centre_* cols)
+    const value = trimOrNull(profileData[f.key])
+               ?? (f.fallback ? trimOrNull(profileData[f.fallback]) : null);
+    setDd(f.ddId, value, f.prompt);
   });
 }
 
@@ -250,7 +255,10 @@ function enterEditMode(sectionKey) {
   sec.fields.forEach(f => {
     const dd = document.getElementById(f.ddId);
     if (!dd) return;
-    const currentVal = trimOrNull(profileData[f.key]) || '';
+    // Fallback to legacy field so old users see their existing data pre-filled
+    const currentVal = trimOrNull(profileData[f.key])
+                    ?? (f.fallback ? trimOrNull(profileData[f.fallback]) : null)
+                    ?? '';
     dd.textContent = '';
     dd.classList.remove('hm-kv__empty');
     const input = buildInput(f, currentVal);
@@ -264,7 +272,9 @@ function enterEditMode(sectionKey) {
     const distEl  = document.getElementById('hm-kv-exam-district')?.querySelector('select');
     if (stateEl && distEl) {
       wireDistrictCascade(stateEl, distEl);
-      const savedDist = trimOrNull(profileData.exam_centre_district) || '';
+      const savedDist = trimOrNull(profileData.exam_centre_district)
+                     ?? trimOrNull(profileData.district)
+                     ?? '';
       if (savedDist) distEl.value = savedDist;
     }
   }

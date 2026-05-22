@@ -19,12 +19,13 @@ let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
 
 const FILTERS = [
-  { id: 'hm-filter-exam-state',    key: 'exam_centre_state',    type: 'select' },
-  { id: 'hm-filter-exam-district', key: 'exam_centre_district', type: 'select' },
-  { id: 'hm-filter-center',        key: 'exam_center',          type: 'text'   },
-  { id: 'hm-filter-gender',        key: 'gender',               type: 'select' },
-  { id: 'hm-filter-travel',        key: 'travel_mode',          type: 'select' },
-  { id: 'hm-filter-stay',          key: 'stay_plan',            type: 'select' },
+  // fallback: old users who predate exam_centre_* columns still match via state/district
+  { id: 'hm-filter-exam-state',    key: 'exam_centre_state',    fallback: 'state',    type: 'select' },
+  { id: 'hm-filter-exam-district', key: 'exam_centre_district', fallback: 'district', type: 'select' },
+  { id: 'hm-filter-center',        key: 'exam_center',                                type: 'text'   },
+  { id: 'hm-filter-gender',        key: 'gender',                                     type: 'select' },
+  { id: 'hm-filter-travel',        key: 'travel_mode',                                type: 'select' },
+  { id: 'hm-filter-stay',          key: 'stay_plan',                                  type: 'select' },
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
@@ -138,9 +139,11 @@ function applyFilters() {
   const result = keys.length === 0
     ? allUsers
     : allUsers.filter((u) => keys.every((k) => {
-        const field  = (u[k] || '').toLowerCase();
-        const filter = active[k];
         const fdef   = FILTERS.find(f => f.key === k);
+        // Use fallback field for backward compat (old users without exam_centre_* cols)
+        const raw    = u[k] ?? (fdef?.fallback ? u[fdef.fallback] : '');
+        const field  = (raw || '').toLowerCase();
+        const filter = active[k];
         // Selects use exact match (normalised values); text fields use substring search
         return fdef?.type === 'select' ? field === filter : field.includes(filter);
       }));
@@ -506,7 +509,11 @@ function refreshCardCta(userId) {
 function mateCard(user, idx) {
   const genderCls = { Female: 'hm-badge--info', Male: 'hm-badge--success' }[user.gender] || '';
   const homeLoc   = [user.district, user.state].filter(Boolean).join(', ');
-  const examLoc   = [user.exam_centre_district, user.exam_centre_state].filter(Boolean).join(', ');
+  // Prefer exam_centre_* fields; fall back to home location for old users
+  const examLoc   = [
+    user.exam_centre_district || user.district,
+    user.exam_centre_state    || user.state,
+  ].filter(Boolean).join(', ');
   const centre    = user.exam_center || '';
   const chips     = travelChips(user.travel_mode, user.stay_plan);
 
