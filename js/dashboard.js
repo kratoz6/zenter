@@ -507,20 +507,29 @@ function refreshCardCta(userId) {
 // ─── Card templates ───────────────────────────────────────────────────────────
 
 function mateCard(user, idx) {
-  const genderCls  = { Female: 'hm-badge--info', Male: 'hm-badge--success' }[user.gender] || '';
+  // Gender: icon symbol + colour class
+  const genderIcon = { Female: '♀', Male: '♂' }[user.gender] || '';
+  const genderCls  = { Female: 'hm-badge--female', Male: 'hm-badge--male' }[user.gender] || '';
 
-  // Home location
-  const homeLoc    = [user.district, user.state].filter(Boolean).join(', ');
+  // Home location: district in bold, state in muted gray
+  const homeDistrict = user.district || '';
+  const homeState    = user.state    || '';
+  const homeLocHtml  = homeDistrict && homeState
+    ? `<strong>${esc(homeDistrict)}</strong><span class="hm-loc-state">, ${esc(homeState)}</span>`
+    : `<strong>${esc(homeDistrict || homeState || '—')}</strong>`;
 
-  // Exam centre (with fallback for old users)
-  const centre     = user.exam_center || '';
-  const examDist   = user.exam_centre_district || user.district || '';
-  const examSt     = user.exam_centre_state    || user.state    || '';
-  const examLoc    = [examDist, examSt].filter(Boolean).join(', ');
+  // Exam centre (with fallback for old users without exam_centre_* cols)
+  const centre   = user.exam_center || '';
+  const examDist = user.exam_centre_district || user.district || '';
+  const examSt   = user.exam_centre_state    || user.state    || '';
+  const examLoc  = [examDist, examSt].filter(Boolean).join(', ');
 
-  // Right-column travel/stay badges use existing label maps
+  // Right badge cards: separate icon from label
+  const travelIcon  = user.travel_mode && TRAVEL_ICON[user.travel_mode];
   const travelLabel = user.travel_mode && TRAVEL_LABEL[user.travel_mode];
+  const stayIcon    = user.stay_plan   && STAY_ICON[user.stay_plan];
   const stayLabel   = user.stay_plan   && STAY_LABEL[user.stay_plan];
+  const hasBadges   = !!(travelLabel || stayLabel);
 
   return `
     <article class="hm-card hm-mate hm-card--interactive"
@@ -529,44 +538,69 @@ function mateCard(user, idx) {
 
       <!-- Identity row: avatar · name · gender + verified badges -->
       <div class="hm-mate__head">
-        <div class="hm-avatar" style="background:${avatarColor(user.full_name)};color:#fff;" aria-hidden="true">${avatarInitials(user.full_name)}</div>
-        <div style="min-width:0; flex:1;">
+        <div class="hm-avatar hm-avatar--card"
+             style="background:${avatarColor(user.full_name)};color:#fff;"
+             aria-hidden="true">${avatarInitials(user.full_name)}</div>
+        <div class="hm-mate__head-info">
           <p class="hm-mate__name">${esc(user.full_name)}</p>
           <div class="hm-mate__badges">
-            ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
-            <span class="hm-badge hm-badge--success">✓ Verified</span>
+            ${user.gender
+              ? `<span class="hm-badge ${genderCls}">${genderIcon} ${esc(user.gender)}</span>`
+              : ''}
+            <span class="hm-badge hm-badge--verified">✓ Verified</span>
           </div>
         </div>
       </div>
 
-      <!-- Route timeline: [icon column] [location info] [travel badges] -->
-      <div class="hm-mate__route-section">
+      <!-- Body: route timeline (left) + divider + badge cards (right) -->
+      <div class="hm-mate__body">
 
-        <!-- Left: home bubble → dashed line → exam bubble -->
-        <div class="hm-mate__route-icons">
-          <div class="hm-mate__icon-bubble">🏠</div>
-          <div class="hm-mate__route-dashes"></div>
-          <div class="hm-mate__icon-bubble">📋</div>
-        </div>
+        <!-- Route wrap: icon track + location text column -->
+        <div class="hm-mate__route-wrap">
 
-        <!-- Centre: home location (top) → exam centre info (bottom) -->
-        <div class="hm-mate__route-info">
-          <p class="hm-mate__from-loc">${esc(homeLoc || '—')}</p>
-          <div>
-            ${centre  ? `<p class="hm-mate__centre-name">${esc(centre)}</p>`    : ''}
-            ${examLoc ? `<p class="hm-mate__centre-loc">📍 ${esc(examLoc)}</p>` : ''}
+          <!-- Icon track: home → dashed connector with dots → exam -->
+          <div class="hm-mate__route-track">
+            <div class="hm-mate__icon-bubble">🏠</div>
+            <div class="hm-mate__route-connector">
+              <div class="hm-mate__route-dot hm-mate__route-dot--top"></div>
+              <div class="hm-mate__route-dashes"></div>
+              <div class="hm-mate__route-dot hm-mate__route-dot--bottom"></div>
+            </div>
+            <div class="hm-mate__icon-bubble">📋</div>
           </div>
+
+          <!-- Text: home loc (top, beside home icon) ↔ exam info (bottom) -->
+          <div class="hm-mate__route-info">
+            <p class="hm-mate__home-loc">${homeLocHtml}</p>
+            <div class="hm-mate__exam-info">
+              ${centre  ? `<p class="hm-mate__centre-name">${esc(centre)}</p>`    : ''}
+              ${examLoc ? `<p class="hm-mate__centre-loc">📍 ${esc(examLoc)}</p>` : ''}
+            </div>
+          </div>
+
         </div>
 
-        <!-- Right: travel + stay pill badges (vertical stack) -->
-        ${travelLabel || stayLabel ? `
-          <div class="hm-mate__travel-stack">
-            ${travelLabel ? `<span class="hm-mate__travel-badge">${esc(travelLabel)}</span>` : ''}
-            ${stayLabel   ? `<span class="hm-mate__travel-badge">${esc(stayLabel)}</span>`   : ''}
+        <!-- Vertical dashed divider (only rendered when badges exist) -->
+        ${hasBadges ? `<div class="hm-mate__v-divider"></div>` : ''}
+
+        <!-- Badge cards: travel mode + stay plan -->
+        ${hasBadges ? `
+          <div class="hm-mate__badge-cards">
+            ${travelLabel ? `
+              <div class="hm-mate__badge-card">
+                <span class="hm-mate__badge-icon">${esc(travelIcon)}</span>
+                <span class="hm-mate__badge-label">${esc(travelLabel)}</span>
+              </div>` : ''}
+            ${stayLabel ? `
+              <div class="hm-mate__badge-card">
+                <span class="hm-mate__badge-icon">${esc(stayIcon)}</span>
+                <span class="hm-mate__badge-label">${esc(stayLabel)}</span>
+              </div>` : ''}
           </div>` : ''}
 
       </div>
 
+      <!-- Footer: join date · connection CTA -->
       <div class="hm-mate__footer">${cardFooterHtml(user)}</div>
     </article>`;
 }
@@ -658,36 +692,32 @@ function esc(str) {
 
 // ─── Enrichment helpers ───────────────────────────────────────────────────────
 
-// Maps stored values → emoji + short label for compact chip display.
+// Maps stored values → emoji icon + short label (split for badge-card layout).
+const TRAVEL_ICON = {
+  'By train':   '🚆',
+  'By flight':  '✈️',
+  'By bus':     '🚌',
+  'Self-drive': '🚗',
+  'Other':      '🚕',
+};
 const TRAVEL_LABEL = {
-  'By train':   '🚆 Train',
-  'By flight':  '✈️ Flight',
-  'By bus':     '🚌 Bus',
-  'Self-drive': '🚗 Self-drive',
-  'Other':      '🚗 Other',
+  'By train':   'Train',
+  'By flight':  'Flight',
+  'By bus':     'Bus',
+  'Self-drive': 'Self-drive',
+  'Other':      'Other',
+};
+const STAY_ICON = {
+  'Need accommodation':     '🏨',
+  'Have accommodation':     '🏠',
+  'Looking for room share': '🛏️',
+  'Other':                  '📦',
 };
 const STAY_LABEL = {
-  'Need accommodation':    '🏨 Needs stay',
-  'Have accommodation':    '🏠 Has stay',
-  'Looking for room share': '🛏️ Room share',
-  'Other':                 '📦 Other',
+  'Need accommodation':     'Needs stay',
+  'Have accommodation':     'Has stay',
+  'Looking for room share': 'Room share',
+  'Other':                  'Other',
 };
-
-// Returns up to 2 chip spans (travel + stay), or empty string if both absent.
-function travelChips(travelMode, stayPlan) {
-  const chips = [];
-  if (travelMode && TRAVEL_LABEL[travelMode])
-    chips.push(`<span class="hm-chip hm-chip--sm">${esc(TRAVEL_LABEL[travelMode])}</span>`);
-  if (stayPlan && STAY_LABEL[stayPlan])
-    chips.push(`<span class="hm-chip hm-chip--sm">${esc(STAY_LABEL[stayPlan])}</span>`);
-  return chips.join('');
-}
-
-// Returns a single-line bio snippet truncated to maxLen chars.
-function bioSnippet(bio, maxLen = 60) {
-  if (!bio) return '';
-  const s = String(bio).trim();
-  return s.length > maxLen ? s.slice(0, maxLen - 1) + '…' : s;
-}
 
 document.addEventListener('DOMContentLoaded', init);
