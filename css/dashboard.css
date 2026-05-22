@@ -82,17 +82,17 @@
   gap: var(--hm-space-3);
 }
 
-/* Header: large avatar + name + gender/verified badges, bottom rule */
+/* Header: avatar + name + badges, bottom rule */
 .hm-mate__head {
-  display: flex; align-items: center; gap: 12px;
-  padding-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--hm-border);
 }
 
-/* Card avatar — 52 px circle, larger than the global .hm-avatar default */
+/* Card avatar — 44 px circle */
 .hm-avatar--card {
-  width: 52px; height: 52px;
-  font-size: 22px; font-weight: 700;
+  width: 44px; height: 44px;
+  font-size: 18px; font-weight: 700;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
@@ -101,8 +101,8 @@
 .hm-mate__head-info { min-width: 0; flex: 1; }
 
 .hm-mate__name {
-  font-size: 20px; font-weight: 700;
-  color: var(--hm-text); margin: 0 0 6px;
+  font-size: 16px; font-weight: 700;
+  color: var(--hm-text); margin: 0 0 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -124,14 +124,14 @@
 /* Body: route wrap + optional vertical divider + optional badge cards */
 .hm-mate__body {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: stretch;
-  min-height: 104px;
+  min-height: 88px;
 }
 
 /* Route wrap: icon track (left) + text column (right) */
 .hm-mate__route-wrap {
-  display: flex; gap: 12px;
+  display: flex; gap: 10px;
   flex: 1; min-width: 0;
   align-items: stretch;
 }
@@ -143,12 +143,12 @@
 }
 
 .hm-mate__icon-bubble {
-  width: 44px; height: 44px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: var(--hm-surface);
   border: 1.5px solid var(--hm-border);
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0;
+  font-size: 17px; flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.07);
 }
 
@@ -156,11 +156,11 @@
 .hm-mate__route-connector {
   flex: 1;
   display: flex; flex-direction: column; align-items: center;
-  padding: 4px 0; min-height: 24px;
+  padding: 3px 0; min-height: 18px;
 }
 
 .hm-mate__route-dot {
-  width: 8px; height: 8px;
+  width: 6px; height: 6px;
   border-radius: 50%; flex-shrink: 0;
 }
 .hm-mate__route-dot--top    { background: #1e293b; }
@@ -181,18 +181,18 @@
   display: flex; flex-direction: column; justify-content: space-between;
 }
 
-.hm-mate__home-loc { font-size: var(--hm-text-sm); color: var(--hm-text); margin: 4px 0 0; }
+.hm-mate__home-loc { font-size: 13px; color: var(--hm-text); margin: 2px 0 0; }
 .hm-loc-state      { color: var(--hm-text-muted); font-weight: 400; }
 
-.hm-mate__exam-info { margin-bottom: 4px; }
+.hm-mate__exam-info { margin-bottom: 2px; }
 
 .hm-mate__centre-name {
-  font-size: var(--hm-text-base); font-weight: 700;
-  color: var(--hm-text); margin: 0 0 2px;
+  font-size: 13px; font-weight: 700;
+  color: var(--hm-text); margin: 0 0 1px;
   overflow: hidden;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
-.hm-mate__centre-loc { font-size: var(--hm-text-xs); color: var(--hm-text-muted); margin: 0; }
+.hm-mate__centre-loc { font-size: 11px; color: var(--hm-text-muted); margin: 0; }
 
 /* Vertical dashed divider between route and badge cards */
 .hm-mate__v-divider {
@@ -206,19 +206,19 @@
 
 /* Badge cards — right column, icon + label in a bordered rounded box */
 .hm-mate__badge-cards {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; flex-direction: column; gap: 6px;
   flex-shrink: 0; justify-content: center;
 }
 .hm-mate__badge-card {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 6px;
   background: var(--hm-surface);
-  border: 1.5px solid var(--hm-border);
-  border-radius: 12px;
-  padding: 8px 12px;
-  min-width: 96px;
+  border: 1px solid var(--hm-border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-width: 82px;
 }
-.hm-mate__badge-icon  { font-size: 18px; line-height: 1; flex-shrink: 0; }
-.hm-mate__badge-label { font-size: var(--hm-text-xs); font-weight: 500; color: var(--hm-text); white-space: nowrap; }
+.hm-mate__badge-icon  { font-size: 15px; line-height: 1; flex-shrink: 0; }
+.hm-mate__badge-label { font-size: 11px; font-weight: 500; color: var(--hm-text); white-space: nowrap; }
 
 /* ============================================================
    PROFILE MODAL
