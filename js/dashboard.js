@@ -45,11 +45,11 @@ async function init() {
   wireModal();
   wireConnectionActions();
 
-  // Subscribe once — drives all incremental UI updates across cards, modal, banner.
+  // Subscribe once — drives all incremental UI updates across cards, modal, requests tab.
   Relationships.subscribe((changedUserId) => {
     refreshCardCta(changedUserId);
     renderModalActions();
-    renderIncomingRequests();
+    renderRequests();
     updateNavBadge();
   });
 
@@ -68,51 +68,58 @@ async function loadData() {
   Relationships.hydrate(connsRes.data || [], myUserId);
   allUsers = (usersRes.data || []).filter((u) => u.id !== myUserId);
 
-  renderIncomingRequests();
+  renderRequests();
   updateNavBadge();
   applyFilters();
 }
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
 
-function wireTabs() {
-  // Set initial tab from URL hash (e.g. /dashboard.html#connections)
-  const initialHash = location.hash.slice(1);
-  if (initialHash === 'connections') activateTab('connections');
+const VALID_TABS = ['requests', 'find-mates', 'connections'];
 
-  // Wire tab buttons inside the page
+function wireTabs() {
+  // Resolve starting tab from URL hash; default to 'requests' (first tab)
+  const initialHash = location.hash.slice(1);
+  const startTab = VALID_TABS.includes(initialHash) ? initialHash : 'requests';
+  if (startTab !== 'requests') activateTab(startTab); // HTML already shows requests
+
   document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = btn.dataset.tab;
       activateTab(t);
-      history.replaceState(null, '', t === 'find-mates' ? location.pathname : `#${t}`);
+      // 'requests' is the canonical default — no hash needed
+      history.replaceState(null, '', t === 'requests' ? location.pathname : `#${t}`);
     });
   });
 
-  // Respond to hash changes triggered by clicking the nav-bar Connections link
-  // while already on dashboard.html (no page reload, just hash update).
+  // Respond to hash changes (e.g. nav-bar Connections link while on dashboard)
   window.addEventListener('hashchange', () => {
     const h = location.hash.slice(1);
-    activateTab(h === 'connections' ? 'connections' : 'find-mates');
+    activateTab(VALID_TABS.includes(h) ? h : 'requests');
   });
 }
 
 async function activateTab(name) {
-  const isConnections = name === 'connections';
+  const tab = VALID_TABS.includes(name) ? name : 'requests';
 
   document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
-    const active = btn.dataset.tab === name;
+    const active = btn.dataset.tab === tab;
     btn.classList.toggle('is-active', active);
     btn.setAttribute('aria-selected', String(active));
   });
 
-  const findPanel = document.getElementById('hm-panel-find-mates');
-  const connPanel = document.getElementById('hm-panel-connections');
-  if (findPanel) findPanel.hidden = isConnections;
-  if (connPanel) connPanel.hidden = !isConnections;
+  const panels = {
+    'requests':    document.getElementById('hm-panel-requests'),
+    'find-mates':  document.getElementById('hm-panel-find-mates'),
+    'connections': document.getElementById('hm-panel-connections'),
+  };
+  Object.entries(panels).forEach(([key, el]) => { if (el) el.hidden = key !== tab; });
 
-  // Lazy-load connections on first activation
-  if (isConnections && !connectionsLoaded && firebaseUser) {
+  // Render Requests tab content (derived from in-memory data — no extra fetch)
+  if (tab === 'requests') renderRequests();
+
+  // Lazy-load Connections on first activation
+  if (tab === 'connections' && !connectionsLoaded && firebaseUser) {
     connectionsLoaded = true;
     const root = document.getElementById('hm-connections-root');
     if (root) {
@@ -264,6 +271,7 @@ async function doAccept(userId, connId) {
   const { error } = await respondToRequest(connId, 'accepted');
   if (error) { toast(error.message || 'Could not accept.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.CONNECTED, role: 'receiver', connectionId: connId });
+  connectionsLoaded = false; // Connections tab re-fetches on next activation to include new contact
   toast('Connected! You can now reveal their contact.', { variant: 'success' });
 }
 
@@ -309,49 +317,121 @@ function updateCount(n) {
 }
 
 function updateNavBadge() {
-  const badge = document.getElementById('hm-requests-badge');
-  if (!badge) return;
   const n = Relationships.countIncomingPending();
-  badge.textContent = n;
-  badge.hidden = n === 0;
+  // Nav-bar badge (persists across all pages via navbar component)
+  const navBadge = document.getElementById('hm-requests-badge');
+  if (navBadge) { navBadge.textContent = n; navBadge.hidden = n === 0; }
+  // Requests tab badge (dashboard only)
+  const tabBadge = document.getElementById('hm-requests-tab-badge');
+  if (tabBadge) { tabBadge.textContent = n; tabBadge.hidden = n === 0; }
 }
 
-// ─── Incoming requests banner ─────────────────────────────────────────────────
+// ─── Requests tab ─────────────────────────────────────────────────────────────
 
-function renderIncomingRequests() {
-  const banner = document.getElementById('hm-requests-banner');
-  if (!banner) return;
+function renderRequests() {
+  const grid = document.getElementById('hm-requests-grid');
+  if (!grid) return;
 
-  const pending = Relationships.getIncomingPending();
-  if (pending.length === 0) { banner.hidden = true; banner.innerHTML = ''; return; }
+  const pending   = Relationships.getIncomingPending();
+  const userById  = new Map(allUsers.map((u) => [u.id, u]));
+  const items     = pending
+    .map(({ userId, connectionId }) => {
+      const u = userById.get(userId);
+      return u ? { user: u, connectionId } : null;
+    })
+    .filter(Boolean);
 
-  const userById = new Map(allUsers.map((u) => [u.id, u]));
-
-  const items = pending.map(({ userId, connectionId }) => {
-    const u = userById.get(userId);
-    if (!u) return '';
-    const color = avatarColor(u.full_name);
-    return `
-      <div class="hm-request-item">
-        <div class="hm-avatar" style="background:${color};color:#fff;flex-shrink:0;" aria-hidden="true">${avatarInitials(u.full_name)}</div>
-        <span class="hm-request-item__name">${esc(u.full_name)}</span>
-        <div class="hm-request-item__actions">
-          <button class="hm-btn hm-btn--primary hm-btn--sm"
-            data-conn-action="accept" data-user-id="${esc(userId)}" data-conn-id="${esc(connectionId)}">Accept</button>
-          <button class="hm-btn hm-btn--ghost hm-btn--sm"
-            data-conn-action="decline" data-user-id="${esc(userId)}" data-conn-id="${esc(connectionId)}">Decline</button>
-        </div>
+  if (items.length === 0) {
+    grid.innerHTML = `
+      <div class="hm-empty" style="grid-column:1/-1;">
+        <div class="hm-empty__icon" aria-hidden="true">🤝</div>
+        <h3>No pending requests</h3>
+        <p class="hm-text-muted">When HallMates send you connection requests, they'll appear here.</p>
       </div>`;
-  }).join('');
+    return;
+  }
 
-  banner.hidden = false;
-  banner.innerHTML = `
-    <div class="hm-requests-banner">
-      <p class="hm-requests-banner__title">
-        🔔 ${pending.length} pending ${pending.length === 1 ? 'request' : 'requests'}
-      </p>
-      <div class="hm-requests-banner__list">${items}</div>
-    </div>`;
+  grid.innerHTML = items.map(({ user, connectionId }) => requestCard(user, connectionId)).join('');
+}
+
+function requestCard(user, connectionId) {
+  const genderIcon = { Female: '♀', Male: '♂' }[user.gender] || '';
+  const genderCls  = { Female: 'hm-badge--female', Male: 'hm-badge--male' }[user.gender] || '';
+
+  const homeDistrict = user.district || '';
+  const homeState    = user.state    || '';
+  const homeLocHtml  = homeDistrict && homeState
+    ? `<strong>${esc(homeDistrict)}</strong><span class="hm-loc-state">, ${esc(homeState)}</span>`
+    : `<strong>${esc(homeDistrict || homeState || '—')}</strong>`;
+
+  const centre   = user.exam_center || '';
+  const examDist = user.exam_centre_district || user.district || '';
+  const examSt   = user.exam_centre_state    || user.state    || '';
+  const examLoc  = [examDist, examSt].filter(Boolean).join(', ');
+
+  const travelIcon  = user.travel_mode && TRAVEL_ICON[user.travel_mode];
+  const travelLabel = user.travel_mode && TRAVEL_LABEL[user.travel_mode];
+  const stayIcon    = user.stay_plan   && STAY_ICON[user.stay_plan];
+  const stayLabel   = user.stay_plan   && STAY_LABEL[user.stay_plan];
+  const hasBadges   = !!(travelLabel || stayLabel);
+
+  const uid = esc(user.id);
+  const cid = esc(connectionId);
+
+  return `
+    <article class="hm-card hm-mate" aria-label="Connection request from ${esc(user.full_name)}">
+
+      <div class="hm-mate__head">
+        <div class="hm-avatar hm-avatar--card"
+             style="background:${avatarColor(user.full_name)};color:#fff;"
+             aria-hidden="true">${avatarInitials(user.full_name)}</div>
+        <div class="hm-mate__head-info">
+          <p class="hm-mate__name">${esc(user.full_name)}</p>
+          <div class="hm-mate__badges">
+            ${user.gender ? `<span class="hm-badge ${genderCls}">${genderIcon} ${esc(user.gender)}</span>` : ''}
+            <span class="hm-badge hm-badge--verified">✓ Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hm-mate__body">
+        <div class="hm-mate__route-wrap">
+          <div class="hm-mate__route-track">
+            <div class="hm-mate__icon-bubble">🏠</div>
+            <div class="hm-mate__route-connector">
+              <div class="hm-mate__route-dot hm-mate__route-dot--top"></div>
+              <div class="hm-mate__route-dashes"></div>
+              <div class="hm-mate__route-dot hm-mate__route-dot--bottom"></div>
+            </div>
+            <div class="hm-mate__icon-bubble">📋</div>
+          </div>
+          <div class="hm-mate__route-info">
+            <p class="hm-mate__home-loc">${homeLocHtml}</p>
+            <div class="hm-mate__exam-info">
+              ${centre  ? `<p class="hm-mate__centre-name">${esc(centre)}</p>`    : ''}
+              ${examLoc ? `<p class="hm-mate__centre-loc">📍 ${esc(examLoc)}</p>` : ''}
+            </div>
+          </div>
+        </div>
+        ${hasBadges ? `<div class="hm-mate__v-divider"></div>` : ''}
+        ${hasBadges ? `
+          <div class="hm-mate__badge-cards">
+            ${travelLabel ? `<div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">${esc(travelIcon)}</span><span class="hm-mate__badge-label">${esc(travelLabel)}</span></div>` : ''}
+            ${stayLabel   ? `<div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">${esc(stayIcon)}</span><span class="hm-mate__badge-label">${esc(stayLabel)}</span></div>` : ''}
+          </div>` : ''}
+      </div>
+
+      <div class="hm-mate__footer">
+        <span class="hm-mate__joined">Joined ${formatDate(user.created_at)}</span>
+        <div class="d-flex gap-2 flex-shrink-0">
+          <button class="hm-btn hm-btn--ghost hm-btn--sm"
+            data-conn-action="decline" data-user-id="${uid}" data-conn-id="${cid}">Reject</button>
+          <button class="hm-btn hm-btn--primary hm-btn--sm"
+            data-conn-action="accept"  data-user-id="${uid}" data-conn-id="${cid}">Accept</button>
+        </div>
+      </div>
+
+    </article>`;
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────

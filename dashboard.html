@@ -27,12 +27,21 @@
 
       <!-- Dashboard tab bar -->
       <div class="hm-tabs" role="tablist" aria-label="Dashboard sections">
-        <button class="hm-tab is-active" role="tab" data-tab="find-mates" aria-selected="true">Find Mates</button>
+        <button class="hm-tab is-active" role="tab" data-tab="requests" aria-selected="true">
+          Requests
+          <span id="hm-requests-tab-badge" class="hm-nav-badge" hidden aria-live="polite">0</span>
+        </button>
+        <button class="hm-tab" role="tab" data-tab="find-mates" aria-selected="false">Find Mates</button>
         <button class="hm-tab" role="tab" data-tab="connections" aria-selected="false">Connections</button>
       </div>
 
+      <!-- ── Requests panel ─────────────────────────────────────────────── -->
+      <div id="hm-panel-requests">
+        <div class="hm-grid-cards" id="hm-requests-grid"></div>
+      </div>
+
       <!-- ── Find Mates panel ────────────────────────────────────────────── -->
-      <div id="hm-panel-find-mates">
+      <div id="hm-panel-find-mates" hidden>
 
       <header class="hm-feed-header">
         <div>
@@ -48,9 +57,6 @@
           <button class="hm-btn hm-btn--primary hm-btn--sm" type="button" id="hm-refresh">Refresh</button>
         </div>
       </header>
-
-      <!-- Incoming connection requests — hidden when empty -->
-      <div id="hm-requests-banner" hidden></div>
 
       <section class="hm-dashboard">
 
