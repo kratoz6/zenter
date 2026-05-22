@@ -77,5 +77,5 @@
   text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
 }
 
-/* reCAPTCHA mount — kept invisible but allocated. */
-#hm-recaptcha-container { min-height: 1px; }
+/* reCAPTCHA is disabled — container kept in HTML but hidden. */
+#hm-recaptcha-container { display: none; }

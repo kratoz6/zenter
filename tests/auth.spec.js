@@ -4,10 +4,12 @@
 // console. Set PLAYWRIGHT_TEST_PHONE + PLAYWRIGHT_TEST_OTP to run the
 // full OTP path; tests gracefully skip otherwise.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 
-const TEST_PHONE = process.env.PLAYWRIGHT_TEST_PHONE; // e.g. "9442946876"
-const TEST_OTP   = process.env.PLAYWRIGHT_TEST_OTP;   // e.g. "123456"
+// Defaults match the Firebase Console test numbers wired in _fixtures.js.
+// Override per-run:  PLAYWRIGHT_TEST_PHONE=9442946876 PLAYWRIGHT_TEST_OTP=123456
+const TEST_PHONE = process.env.PLAYWRIGHT_TEST_PHONE || '6363616007';
+const TEST_OTP   = process.env.PLAYWRIGHT_TEST_OTP   || '111111';
 
 test.describe('Login page', () => {
   test('loads with phone input + Send OTP button', async ({ page }) => {

@@ -19,12 +19,12 @@ let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
 
 const FILTERS = [
-  { id: 'hm-filter-state',    key: 'state',       type: 'select' },
-  { id: 'hm-filter-district', key: 'district',    type: 'select' },
-  { id: 'hm-filter-center',   key: 'exam_center', type: 'text'   },
-  { id: 'hm-filter-gender',   key: 'gender',      type: 'select' },
-  { id: 'hm-filter-travel',   key: 'travel_mode', type: 'select' },
-  { id: 'hm-filter-stay',     key: 'stay_plan',   type: 'select' },
+  { id: 'hm-filter-exam-state',    key: 'exam_centre_state',    type: 'select' },
+  { id: 'hm-filter-exam-district', key: 'exam_centre_district', type: 'select' },
+  { id: 'hm-filter-center',        key: 'exam_center',          type: 'text'   },
+  { id: 'hm-filter-gender',        key: 'gender',               type: 'select' },
+  { id: 'hm-filter-travel',        key: 'travel_mode',          type: 'select' },
+  { id: 'hm-filter-stay',          key: 'stay_plan',            type: 'select' },
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
@@ -162,9 +162,9 @@ function wireFilters() {
       ?.addEventListener(type === 'text' ? 'input' : 'change', debouncedApply);
   });
 
-  // Populate state dropdown and wire cascading district from location-data
-  const stateEl    = document.getElementById('hm-filter-state');
-  const districtEl = document.getElementById('hm-filter-district');
+  // Populate exam centre state dropdown and wire district cascade
+  const stateEl    = document.getElementById('hm-filter-exam-state');
+  const districtEl = document.getElementById('hm-filter-exam-district');
   if (stateEl && districtEl) {
     populateStateSelect(stateEl, { defaultLabel: 'All states' });
     wireDistrictCascade(stateEl, districtEl, {
@@ -184,7 +184,7 @@ function wireFilters() {
 function clearFilters() {
   FILTERS.forEach(({ id }) => { const el = document.getElementById(id); if (el) el.value = ''; });
   // Trigger cascade so district options reset to "All districts" when state is cleared
-  document.getElementById('hm-filter-state')?.dispatchEvent(new Event('change'));
+  document.getElementById('hm-filter-exam-state')?.dispatchEvent(new Event('change'));
   applyFilters();
 }
 
@@ -377,8 +377,8 @@ function populateModal(user) {
   avatarEl.style.color        = '#fff';
 
   document.getElementById('hm-modal-name').textContent     = user.full_name  || '—';
-  document.getElementById('hm-modal-state').textContent    = user.state      || '—';
-  document.getElementById('hm-modal-district').textContent = user.district   || '—';
+  document.getElementById('hm-modal-state').textContent    = user.exam_centre_state    || user.state    || '—';
+  document.getElementById('hm-modal-district').textContent = user.exam_centre_district || user.district || '—';
   document.getElementById('hm-modal-center').textContent   = user.exam_center || '—';
   document.getElementById('hm-modal-joined').textContent   = formatDate(user.created_at);
 
@@ -505,28 +505,41 @@ function refreshCardCta(userId) {
 
 function mateCard(user, idx) {
   const genderCls = { Female: 'hm-badge--info', Male: 'hm-badge--success' }[user.gender] || '';
-  const location  = [user.district, user.state].filter(Boolean).join(', ');
-  const bio       = bioSnippet(user.bio);
+  const homeLoc   = [user.district, user.state].filter(Boolean).join(', ');
+  const examLoc   = [user.exam_centre_district, user.exam_centre_state].filter(Boolean).join(', ');
+  const centre    = user.exam_center || '';
   const chips     = travelChips(user.travel_mode, user.stay_plan);
 
   return `
     <article class="hm-card hm-mate hm-card--interactive"
       data-idx="${idx}" tabindex="0" role="button"
       aria-label="View ${esc(user.full_name)}'s profile">
+
+      <!-- Row 1: Avatar · Name · Gender + Verified badges -->
       <div class="hm-mate__head">
         <div class="hm-avatar" style="background:${avatarColor(user.full_name)};color:#fff;" aria-hidden="true">${avatarInitials(user.full_name)}</div>
-        <div style="min-width:0;">
+        <div style="min-width:0; flex:1;">
           <p class="hm-mate__name">${esc(user.full_name)}</p>
-          <p class="hm-mate__sub">${esc(location) || '—'}</p>
+          <div class="hm-mate__badges">
+            ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
+            <span class="hm-badge hm-badge--success">✓ Verified</span>
+          </div>
         </div>
       </div>
-      <div class="hm-mate__meta">
-        ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
-        <span class="hm-badge hm-badge--success">✓ Verified</span>
-      </div>
-      ${user.exam_center ? `<p class="hm-mate__center">🏛️ ${esc(user.exam_center)}</p>` : ''}
-      ${bio   ? `<p class="hm-mate__bio">${esc(bio)}</p>` : ''}
-      ${chips ? `<div class="hm-mate__chips">${chips}</div>` : ''}
+
+      <!-- Row 2: Home location — muted geographic origin -->
+      ${homeLoc ? `<p class="hm-mate__home">🏠 ${esc(homeLoc)}</p>` : ''}
+
+      <!-- Row 3: Exam centre name — primary travel-intent visual -->
+      ${centre ? `<p class="hm-mate__destination">🛣️ ${esc(centre)}</p>` : ''}
+
+      <!-- Row 4: Exam district/state · travel+stay chips (right-aligned) -->
+      ${examLoc || chips ? `
+        <div class="hm-mate__exam-row">
+          ${examLoc ? `<p class="hm-mate__exam-loc">📍 ${esc(examLoc)}</p>` : '<span></span>'}
+          ${chips   ? `<div class="hm-mate__chips">${chips}</div>` : ''}
+        </div>` : ''}
+
       <div class="hm-mate__footer">${cardFooterHtml(user)}</div>
     </article>`;
 }

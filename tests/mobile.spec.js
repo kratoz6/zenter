@@ -3,7 +3,7 @@
 // These tests run cross-viewport without auth. They verify the public
 // pages stay aligned and free of horizontal overflow at small widths.
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures.js';
 
 const MOBILE_WIDTHS = [360, 390, 412];
 

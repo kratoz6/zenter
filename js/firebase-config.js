@@ -7,7 +7,6 @@ import {
   getAuth,
   setPersistence,
   browserLocalPersistence,
-  RecaptchaVerifier,
   signInWithPhoneNumber,
   onAuthStateChanged,
   signOut,
@@ -24,24 +23,32 @@ const firebaseApp = initializeApp({
 
 export const auth = getAuth(firebaseApp);
 
+// reCAPTCHA is disabled for all users — no bot check, no popup, ever.
+// OTP delivery + 6-digit code verification remain the security layer.
+auth.settings.appVerificationDisabledForTesting = true;
+
 // Keep sessions across reloads. Phone-OTP-only apps want local persistence.
 setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.error('[firebase] persistence init failed', err);
 });
 
 // Re-export OTP primitives so feature modules import a single surface.
-export {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  onAuthStateChanged,
-  signOut,
-};
+export { signInWithPhoneNumber, onAuthStateChanged, signOut };
 
-// Factory for an invisible reCAPTCHA verifier, scoped to a container element.
-// Phase 2 will call this from the login flow.
-export function createRecaptcha(containerId, options = {}) {
-  return new RecaptchaVerifier(auth, containerId, {
-    size: 'invisible',
-    ...options,
-  });
+// No-op verifier — reCAPTCHA is fully disabled.
+// signInWithPhoneNumber requires a verifier object; this satisfies the
+// full Firebase ApplicationVerifier interface without triggering any
+// Google reCAPTCHA calls.
+// _reset() is Firebase's private post-verification lifecycle hook — it is
+// called internally after signInWithPhoneNumber resolves to prepare the
+// verifier for subsequent attempts. Without it the SDK throws
+// "r._reset is not a function".
+export function createRecaptcha() {
+  return {
+    type:   'recaptcha',
+    verify: () => Promise.resolve(''),
+    clear:  () => {},
+    render: () => Promise.resolve(0),
+    _reset: () => {},
+  };
 }

@@ -46,6 +46,7 @@
                 required
               />
             </div>
+            <span class="hm-help">Your number will not be displayed without your mutual acceptance</span>
             <span class="hm-help">We'll send you a 6-digit verification code.</span>
             <p class="text-danger small mt-2" id="hm-error-phone" role="alert" hidden></p>
           </div>
@@ -56,9 +57,6 @@
 
           <p class="hm-text-subtle hm-text-center" style="margin-top: 16px; font-size: var(--hm-text-xs);">
             By continuing you agree to our <a href="/index.html#terms">Terms</a> and <a href="/index.html#privacy">Privacy Policy</a>.
-          </p>
-          <p class="hm-text-subtle hm-text-center" style="margin-top: 12px; font-size: var(--hm-text-xs);">
-            Trouble signing in? <a href="/contact.html" style="color:var(--hm-primary);font-weight:600;">Get Help</a>
           </p>
         </form>
 
@@ -80,12 +78,9 @@
 
           <button type="submit" class="hm-btn hm-btn--primary hm-btn--block hm-btn--lg">Verify &amp; continue</button>
           <button type="button" class="hm-btn hm-btn--ghost hm-btn--block" id="hm-otp-back" style="margin-top: 12px;">Change number</button>
-          <p class="hm-text-subtle hm-text-center" style="margin-top: 16px; font-size: var(--hm-text-xs);">
-            Didn't receive the code? <a href="/contact.html" style="color:var(--hm-primary);font-weight:600;">Get Help</a>
-          </p>
         </form>
 
-        <!-- Firebase invisible reCAPTCHA mounts here -->
+        <!-- reCAPTCHA disabled — container kept for Firebase API compatibility -->
         <div id="hm-recaptcha-container" aria-hidden="true"></div>
       </div>
     </section>
@@ -97,7 +92,7 @@
         <ul>
           <li>Phone-verified, real students only</li>
           <li>Numbers reveal on mutual consent</li>
-          <li>Built for NEET PG 2026 and beyond</li>
+          <li>Built for Exam 2026 and beyond</li>
         </ul>
       </div>
     </aside>

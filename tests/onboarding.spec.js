@@ -5,23 +5,10 @@
 // Public-shell assertions (auth-gate redirect, structural checks)
 // run unconditionally.
 
-import { test, expect } from '@playwright/test';
+import { test, expect, signIn } from './_fixtures.js';
 
-const TEST_PHONE = process.env.PLAYWRIGHT_TEST_PHONE;
-const TEST_OTP   = process.env.PLAYWRIGHT_TEST_OTP;
-
-// Helper: complete the OTP flow and land somewhere authenticated.
-async function signIn(page) {
-  await page.goto('/login.html');
-  await page.locator('#hm-phone').fill(TEST_PHONE);
-  await page.locator('#hm-send-otp').click();
-  await page.waitForSelector('#hm-form-otp:not([hidden])', { timeout: 30_000 });
-  for (let i = 0; i < TEST_OTP.length; i++) {
-    await page.locator(`#hm-otp-${i + 1}`).fill(TEST_OTP[i]);
-  }
-  // Vercel rewrites .html → clean URLs, so accept either form.
-  await page.waitForURL(/\/(dashboard|onboarding)(\.html)?(\?|#|\/?$)/, { timeout: 30_000 });
-}
+const TEST_PHONE = process.env.PLAYWRIGHT_TEST_PHONE || '6363616007';
+const TEST_OTP   = process.env.PLAYWRIGHT_TEST_OTP   || '111111';
 
 test.describe('Onboarding — auth gate', () => {
   test('redirects unauthenticated visitor to login', async ({ page }) => {

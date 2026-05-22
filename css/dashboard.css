@@ -106,8 +106,56 @@
 .hm-card--interactive:hover .hm-mate__view,
 .hm-card--interactive:focus-visible .hm-mate__view { opacity: 1; }
 
+/* ── Card hierarchy: 4-row travel-intent layout ──────────────────────────── */
+
+/* Row 1 — badges sit directly below name inside the head */
+.hm-mate__badges {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-top: 4px;
+}
+
+/* Row 2 — home location: muted secondary context */
+.hm-mate__home {
+  font-size: var(--hm-text-xs);
+  color: var(--hm-text-subtle);
+  margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Row 3 — exam centre name: primary travel-intent signal */
+.hm-mate__destination {
+  font-size: var(--hm-text-sm);
+  font-weight: 700;
+  color: var(--hm-text);
+  margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Row 4 — exam district/state left, travel+stay chips right */
+.hm-mate__exam-row {
+  display: flex; align-items: center; gap: var(--hm-space-2);
+}
+.hm-mate__exam-loc {
+  font-size: var(--hm-text-xs);
+  color: var(--hm-text-muted);
+  margin: 0; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hm-mate__exam-row .hm-mate__chips { flex-shrink: 0; }
+
 /* ── Card enrichment: bio snippet + travel/stay chips ────────────────────── */
 /* Single-line bio snippet — truncates gracefully, never breaks card layout */
+/* Travel route: home district → exam district */
+.hm-mate__route {
+  font-size: var(--hm-text-sm);
+  font-weight: 600;
+  color: var(--hm-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .hm-mate__bio {
   font-size: var(--hm-text-xs);
   color: var(--hm-text-muted);

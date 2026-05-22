@@ -50,7 +50,8 @@ export function getProfileByPhone(phone) {
   return query(
     from('users')
       .select(
-        'id, phone, full_name, gender, state, district, exam_center, ' +
+        'id, phone, full_name, gender, state, district, ' +
+        'exam_centre_state, exam_centre_district, exam_center, ' +
         'college, travel_mode, stay_plan, bio, profile_completed, created_at'
       )
       .eq('phone', phone)
@@ -71,7 +72,7 @@ export function upsertUser(payload) {
 export function getAllUsers() {
   return query(
     from('users')
-      .select('id, full_name, gender, state, district, exam_center, phone, travel_mode, stay_plan, bio, created_at')
+      .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, created_at')
       .eq('profile_completed', true)
       .order('created_at', { ascending: false })
   );
@@ -106,7 +107,7 @@ export function getUsersByIds(ids) {
   if (!ids || ids.length === 0) return Promise.resolve({ data: [], error: null });
   return query(
     from('users')
-      .select('id, full_name, state, district, exam_center, phone, travel_mode, stay_plan, bio')
+      .select('id, full_name, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio')
       .in('id', ids)
   );
 }

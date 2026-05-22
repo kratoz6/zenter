@@ -58,13 +58,13 @@ const SECTIONS = {
     editBtnId: 'hm-edit-centre',
     fields: [
       {
-        key: 'state', ddId: 'hm-kv-state', type: 'select',
-        options: STATES, prompt: 'Add your state',
+        key: 'exam_centre_state', ddId: 'hm-kv-exam-state', type: 'select',
+        options: STATES, prompt: 'Add exam centre state',
       },
       {
         // options: [] → populated dynamically by wireDistrictCascade after render
-        key: 'district', ddId: 'hm-kv-district', type: 'select',
-        options: [], prompt: 'Add your district',
+        key: 'exam_centre_district', ddId: 'hm-kv-exam-district', type: 'select',
+        options: [], prompt: 'Add exam centre district',
       },
       {
         key: 'exam_center', ddId: 'hm-kv-exam-center', type: 'text',
@@ -260,11 +260,11 @@ function enterEditMode(sectionKey) {
 
   // Wire state → district cascade for the centre section
   if (sectionKey === 'centre') {
-    const stateEl = document.getElementById('hm-kv-state')?.querySelector('select');
-    const distEl  = document.getElementById('hm-kv-district')?.querySelector('select');
+    const stateEl = document.getElementById('hm-kv-exam-state')?.querySelector('select');
+    const distEl  = document.getElementById('hm-kv-exam-district')?.querySelector('select');
     if (stateEl && distEl) {
       wireDistrictCascade(stateEl, distEl);
-      const savedDist = trimOrNull(profileData.district) || '';
+      const savedDist = trimOrNull(profileData.exam_centre_district) || '';
       if (savedDist) distEl.value = savedDist;
     }
   }

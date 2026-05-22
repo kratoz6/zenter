@@ -174,7 +174,8 @@ function bioSnippet(bio, maxLen = 60) {
 
 function buildCard(user) {
   const name        = user.full_name   || 'Unknown';
-  const location    = [user.district, user.state].filter(Boolean).join(', ') || '—';
+  const examLoc     = [user.exam_centre_district, user.exam_centre_state].filter(Boolean).join(', ');
+  const location    = examLoc || [user.district, user.state].filter(Boolean).join(', ') || '—';
   const centre      = user.exam_center || '—';
   const phone       = user.phone       || '';
   const phonePretty = phone ? formatPhonePretty(phone) : '—';

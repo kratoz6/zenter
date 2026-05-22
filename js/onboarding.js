@@ -14,12 +14,20 @@ async function init() {
   firebaseUser = await requireAuth();
   if (!firebaseUser) return;
 
-  // State → District cascade (elements are in DOM even while panel is hidden)
+  // Home state → district cascade (Step 2)
   const stateEl    = document.getElementById('hm-state');
   const districtEl = document.getElementById('hm-district');
   if (stateEl && districtEl) {
     populateStateSelect(stateEl);
     wireDistrictCascade(stateEl, districtEl);
+  }
+
+  // Exam centre state → district cascade (Step 3)
+  const examStateEl    = document.getElementById('hm-exam-state');
+  const examDistrictEl = document.getElementById('hm-exam-district');
+  if (examStateEl && examDistrictEl) {
+    populateStateSelect(examStateEl);
+    wireDistrictCascade(examStateEl, examDistrictEl);
   }
 
   // Step navigation via data-go-step buttons
@@ -52,11 +60,15 @@ async function init() {
   document.getElementById('hm-form-step3').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!validate([
-      { id: 'hm-exam-center', errId: 'hm-err-exam-center', msg: 'Enter your exam centre name.' },
+      { id: 'hm-exam-state',    errId: 'hm-err-exam-state',    msg: 'Select your exam centre state.' },
+      { id: 'hm-exam-district', errId: 'hm-err-exam-district', msg: 'Select your exam centre district.' },
+      { id: 'hm-exam-center',   errId: 'hm-err-exam-center',   msg: 'Enter your exam centre name.' },
     ])) return;
-    collected.exam_center  = val('hm-exam-center');
-    collected.travel_mode  = val('hm-travel-mode')  || null;
-    collected.stay_plan    = val('hm-stay-plan')    || null;
+    collected.exam_centre_state    = val('hm-exam-state');
+    collected.exam_centre_district = val('hm-exam-district');
+    collected.exam_center          = val('hm-exam-center');
+    collected.travel_mode          = val('hm-travel-mode')  || null;
+    collected.stay_plan            = val('hm-stay-plan')    || null;
     await saveProfile();
   });
 }
@@ -73,9 +85,11 @@ async function saveProfile() {
     phone:             firebaseUser.phoneNumber,
     full_name:         collected.full_name,
     gender:            collected.gender,
-    state:             collected.state,
-    district:          collected.district,
-    exam_center:       collected.exam_center,
+    state:                 collected.state,
+    district:              collected.district,
+    exam_centre_state:     collected.exam_centre_state,
+    exam_centre_district:  collected.exam_centre_district,
+    exam_center:           collected.exam_center,
     travel_mode:       collected.travel_mode,
     stay_plan:         collected.stay_plan,
     profile_completed: true,

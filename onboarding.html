@@ -105,11 +105,34 @@
           <h1 class="hm-auth__title">Your exam centre</h1>
           <p class="hm-auth__subtitle">We use this to match you with students at the same centre.</p>
           <form id="hm-form-step3" novalidate>
-            <div class="hm-field">
-              <label class="hm-label" for="hm-exam-center">Exam centre name <span class="text-danger">*</span></label>
-              <input class="hm-input" id="hm-exam-center" type="text" placeholder="e.g. Pearson VUE — Andheri East, Mumbai" required />
-              <span class="hm-help">Enter the centre name exactly as shown on your admit card.</span>
-              <p class="text-danger small mt-1" id="hm-err-exam-center" hidden></p>
+            <!-- Exam centre location — drives matching -->
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="hm-field">
+                  <label class="hm-label" for="hm-exam-state">Exam centre state <span class="text-danger">*</span></label>
+                  <select class="hm-select" id="hm-exam-state" required>
+                    <option value="">Select state…</option>
+                  </select>
+                  <p class="text-danger small mt-1" id="hm-err-exam-state" hidden></p>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="hm-field">
+                  <label class="hm-label" for="hm-exam-district">Exam centre district <span class="text-danger">*</span></label>
+                  <select class="hm-select" id="hm-exam-district" required disabled>
+                    <option value="">Select state first…</option>
+                  </select>
+                  <p class="text-danger small mt-1" id="hm-err-exam-district" hidden></p>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="hm-field">
+                  <label class="hm-label" for="hm-exam-center">Exam centre name <span class="text-danger">*</span></label>
+                  <input class="hm-input" id="hm-exam-center" type="text" placeholder="e.g. Pearson VUE — Andheri East, Mumbai" required />
+                  <span class="hm-help">Enter the centre name exactly as shown on your admit card.</span>
+                  <p class="text-danger small mt-1" id="hm-err-exam-center" hidden></p>
+                </div>
+              </div>
             </div>
 
             <!-- Travel & Stay (optional) -->
