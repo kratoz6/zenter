@@ -6,6 +6,7 @@ export const APP = Object.freeze({
   tagline: 'Find your exam centre mates',
   version: '0.1.0',
   supportEmail: 'support@hallmate.in',
+  supportPhone: '+91 94429 46876',
 });
 
 // Public Supabase project credentials. Anon key is safe to ship to the browser
@@ -31,6 +32,7 @@ export const ROUTES = Object.freeze({
   dashboard: '/dashboard.html',
   connections: '/connections.html',
   profile: '/profile.html',
+  contact: '/contact.html',
 });
 
 export const STORAGE_KEYS = Object.freeze({

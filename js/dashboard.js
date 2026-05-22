@@ -10,17 +10,21 @@ import { populateStateSelect, wireDistrictCascade } from './location-data.js';
 
 const { REL } = Relationships;
 
-let allUsers       = [];
-let displayedUsers = [];
+let allUsers        = [];
+let displayedUsers  = [];
 let lastFocusedCard = null;
 let modalUser       = null;
 let myUserId        = null;
+let firebaseUser    = null;   // stored for lazy connections load
+let connectionsLoaded = false;
 
 const FILTERS = [
   { id: 'hm-filter-state',    key: 'state',       type: 'select' },
   { id: 'hm-filter-district', key: 'district',    type: 'select' },
   { id: 'hm-filter-center',   key: 'exam_center', type: 'text'   },
   { id: 'hm-filter-gender',   key: 'gender',      type: 'select' },
+  { id: 'hm-filter-travel',   key: 'travel_mode', type: 'select' },
+  { id: 'hm-filter-stay',     key: 'stay_plan',   type: 'select' },
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
@@ -28,8 +32,10 @@ const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const firebaseUser = await requireAuth();
+  firebaseUser = await requireAuth();
   if (!firebaseUser) return;
+
+  wireTabs();
 
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
   myUserId = me?.id || null;
@@ -64,6 +70,55 @@ async function loadData() {
   renderIncomingRequests();
   updateNavBadge();
   applyFilters();
+}
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+
+function wireTabs() {
+  // Set initial tab from URL hash (e.g. /dashboard.html#connections)
+  const initialHash = location.hash.slice(1);
+  if (initialHash === 'connections') activateTab('connections');
+
+  // Wire tab buttons inside the page
+  document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.tab;
+      activateTab(t);
+      history.replaceState(null, '', t === 'find-mates' ? location.pathname : `#${t}`);
+    });
+  });
+
+  // Respond to hash changes triggered by clicking the nav-bar Connections link
+  // while already on dashboard.html (no page reload, just hash update).
+  window.addEventListener('hashchange', () => {
+    const h = location.hash.slice(1);
+    activateTab(h === 'connections' ? 'connections' : 'find-mates');
+  });
+}
+
+async function activateTab(name) {
+  const isConnections = name === 'connections';
+
+  document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
+    const active = btn.dataset.tab === name;
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+
+  const findPanel = document.getElementById('hm-panel-find-mates');
+  const connPanel = document.getElementById('hm-panel-connections');
+  if (findPanel) findPanel.hidden = isConnections;
+  if (connPanel) connPanel.hidden = !isConnections;
+
+  // Lazy-load connections on first activation
+  if (isConnections && !connectionsLoaded && firebaseUser) {
+    connectionsLoaded = true;
+    const root = document.getElementById('hm-connections-root');
+    if (root) {
+      const { runConnections } = await import('./connections.js');
+      await runConnections(root, firebaseUser);
+    }
+  }
 }
 
 // ─── Filtering ────────────────────────────────────────────────────────────────

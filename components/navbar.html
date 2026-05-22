@@ -2,7 +2,7 @@
   <div class="hm-container hm-navbar__inner">
 
     <!-- ── LEFT: Brand ────────────────────────────────────────────────────── -->
-    <a href="/index.html" class="hm-brand" aria-label="HallMate home">
+    <a href="/index.html" class="hm-brand" id="hm-brand-link" aria-label="HallMate home">
       <span class="hm-brand__mark">H</span>
       <span class="hm-brand__text">HallMate</span>
     </a>
@@ -34,34 +34,10 @@
         <a href="/index.html#how-it-works">How it works</a>
       </li>
 
-      <!-- ── Logged-IN primary links (desktop center + mobile drawer) -->
-      <li data-auth="logged-in" hidden>
-        <a href="/dashboard.html" data-route="dashboard">Find Mates</a>
-      </li>
-      <li data-auth="logged-in" hidden>
-        <a href="/connections.html" data-route="connections">Connections</a>
-      </li>
-
-      <!-- ── Logged-IN secondary (mobile drawer only — hidden on desktop) -->
-      <li class="hm-nav-links__sep hm-nav-links__drawer-item" data-auth="logged-in" hidden></li>
-      <li class="hm-nav-links__drawer-item" data-auth="logged-in" hidden>
-        <a href="/profile.html" data-route="profile" class="hm-nav-links__action">Profile</a>
-      </li>
-      <li class="hm-nav-links__drawer-item" data-auth="logged-in" hidden>
-        <button
-          type="button"
-          class="hm-nav-links__action hm-nav-links__action--danger"
-          data-action="logout"
-        >Log out</button>
-      </li>
-
       <!-- ── Utility links (drawer only, always visible regardless of auth) -->
       <li class="hm-nav-links__sep hm-nav-links__drawer-item"></li>
       <li class="hm-nav-links__drawer-item">
-        <a href="mailto:support@hallmate.in" class="hm-nav-links__action">Contact us</a>
-      </li>
-      <li class="hm-nav-links__drawer-item">
-        <a href="/index.html#support" class="hm-nav-links__action">Support</a>
+        <a href="/contact.html" class="hm-nav-links__action">Contact us</a>
       </li>
 
     </ul>

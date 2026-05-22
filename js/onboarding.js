@@ -54,7 +54,9 @@ async function init() {
     if (!validate([
       { id: 'hm-exam-center', errId: 'hm-err-exam-center', msg: 'Enter your exam centre name.' },
     ])) return;
-    collected.exam_center = val('hm-exam-center');
+    collected.exam_center  = val('hm-exam-center');
+    collected.travel_mode  = val('hm-travel-mode')  || null;
+    collected.stay_plan    = val('hm-stay-plan')    || null;
     await saveProfile();
   });
 }
@@ -74,6 +76,8 @@ async function saveProfile() {
     state:             collected.state,
     district:          collected.district,
     exam_center:       collected.exam_center,
+    travel_mode:       collected.travel_mode,
+    stay_plan:         collected.stay_plan,
     profile_completed: true,
   });
 

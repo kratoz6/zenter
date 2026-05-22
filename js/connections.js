@@ -27,16 +27,22 @@ async function init() {
   const root = document.getElementById('hm-connections-root');
   if (!root) return;
 
+  await runConnections(root, firebaseUser);
+}
+
+// ─── Public entry-point ───────────────────────────────────────────────────────
+// Called by dashboard.js when the Connections tab is first activated.
+// Accepts an already-resolved firebaseUser so no second requireAuth() is needed.
+
+export async function runConnections(root, firebaseUser) {
   setLoading(root);
 
-  // 1. Resolve current user's Supabase UUID (needed to join connections table)
   const { data: me, error: meErr } = await getProfileByPhone(firebaseUser.phoneNumber);
   if (meErr || !me) {
     renderError(root, 'Could not load your profile. Please sign in again.');
     return;
   }
 
-  // 2. Fetch all accepted connections where current user is sender OR receiver
   const { data: connections, error: connErr } = await getAcceptedConnections(me.id);
   if (connErr) {
     renderError(root, connErr.message || 'Could not load connections.');
@@ -48,13 +54,10 @@ async function init() {
     return;
   }
 
-  // 3. Derive the "other" user's id for every accepted connection (deduplicated
-  //    with a Set to prevent rendering duplicate cards if rows somehow repeat)
   const otherIds = [...new Set(
     connections.map(c => c.sender_id === me.id ? c.receiver_id : c.sender_id)
   )];
 
-  // 4. Batch-fetch all partner profiles in one round-trip
   const { data: partners, error: partnersErr } = await getUsersByIds(otherIds);
   if (partnersErr || !partners) {
     renderError(root, 'Could not load connection profiles.');
@@ -66,7 +69,6 @@ async function init() {
     return;
   }
 
-  // 5. Render
   const byId = Object.fromEntries(partners.map(u => [u.id, u]));
   renderConnections(root, otherIds, byId);
 }

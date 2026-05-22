@@ -5,7 +5,7 @@
 import { mountChrome, highlightActiveNav, $, $$, on } from './ui.js';
 import { whenReady, onAuthChange, logout, requireAuth, redirectIfAuthed } from './auth.js';
 import { currentRoute } from './utils.js';
-import { ROUTES } from './config.js';
+import { ROUTES, STORAGE_KEYS } from './config.js';
 
 // Route -> initializer. Each page registers its concerns here.
 // Phase 1: shells only. Logic lands in Phase 2.
@@ -53,6 +53,10 @@ function renderNavAuthState(user) {
   // locations (hm-nav-cta, hm-nav-actions, hm-nav-profile, nav-link <li>s).
   $$('[data-auth="logged-out"]').forEach((el) => { el.hidden = !!user; });
   $$('[data-auth="logged-in"]').forEach((el) => { el.hidden = !user; });
+
+  // Auth-aware logo routing: logged-in → dashboard, logged-out → landing.
+  const brandLink = document.getElementById('hm-brand-link');
+  if (brandLink) brandLink.href = user ? ROUTES.dashboard : ROUTES.landing;
 
   // Update navbar avatar initials from sessionStorage cache set by profile.js.
   if (user) updateNavbarAvatar();
