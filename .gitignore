@@ -27,3 +27,10 @@ build/
 
 # Node (if tooling added later)
 node_modules/
+package-lock.json
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/

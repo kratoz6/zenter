@@ -1,0 +1,16 @@
+{
+  "name": "hallmate",
+  "version": "0.1.0",
+  "description": "HallMate — find your NEET PG exam centre mates.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
