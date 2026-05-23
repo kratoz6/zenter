@@ -332,7 +332,7 @@ function doReveal() {
 function updateCount(n) {
   const el = document.getElementById('hm-results-count');
   if (!el) return;
-  el.textContent = allUsers.length === 0 ? '' : `${n} ${n === 1 ? 'HallMate' : 'HallMates'} found`;
+  el.textContent = allUsers.length === 0 ? '' : `${n} centre ${n === 1 ? 'mate' : 'mates'} found`;
 }
 
 function updateNavBadge() {
@@ -569,11 +569,11 @@ function renderEmpty(isFiltered) {
   setGrid(`
     <div class="hm-empty" style="grid-column:1/-1;">
       <div class="hm-empty__icon" aria-hidden="true">${isFiltered ? '🔍' : '🏛️'}</div>
-      <h3>${isFiltered ? 'No HallMates found' : 'No mates yet'}</h3>
+      <h3>${isFiltered ? 'No centre mates found' : 'No mates yet'}</h3>
       <p class="hm-text-muted">
         ${isFiltered
-          ? 'No HallMates match the selected filters. Try widening your search.'
-          : 'Be the first HallMate in your exam centre.'}
+          ? 'No centre mates match the selected filters. Try widening your search.'
+          : 'Be the first to join your exam centre.'}
       </p>
       ${isFiltered ? `<button class="hm-btn hm-btn--ghost hm-btn--sm" onclick="document.getElementById('hm-filter-clear').click()">Clear filters</button>` : ''}
     </div>`);

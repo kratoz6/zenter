@@ -2,10 +2,10 @@
 // All cross-cutting constants live here so other modules stay environment-agnostic.
 
 export const APP = Object.freeze({
-  name: 'HallMate',
+  name: 'Zenter',
   tagline: 'Find your exam centre mates',
   version: '0.1.0',
-  supportEmail: 'support@hallmate.in',
+  supportEmail: 'support@hallmate.in', // unchanged — internal contact (will rotate later)
   supportPhone: '+91 94429 46876',
 });
 

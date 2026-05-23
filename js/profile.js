@@ -420,7 +420,7 @@ function cacheInitials(name) {
     const initials = avatarInitials(name);
     sessionStorage.setItem(STORAGE_KEYS.profile, JSON.stringify({ initials }));
     const navAvatar = document.getElementById('hm-navbar-avatar');
-    if (navAvatar && initials !== 'HM') navAvatar.textContent = initials;
+    if (navAvatar && initials !== 'Z') navAvatar.textContent = initials;
   } catch { /* ignore — storage may be unavailable in private mode */ }
 }
 
@@ -432,7 +432,7 @@ function trimOrNull(v) {
 
 function avatarInitials(name) {
   const s = (name || '').trim();
-  if (!s) return 'HM';
+  if (!s) return 'Z';
   return s.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
