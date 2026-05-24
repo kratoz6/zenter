@@ -290,8 +290,14 @@ async function doAccept(userId, connId) {
   const { error } = await respondToRequest(connId, 'accepted');
   if (error) { toast(error.message || 'Could not accept.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.CONNECTED, role: 'receiver', connectionId: connId });
-  connectionsLoaded = false; // Connections tab re-fetches on next activation to include new contact
+  connectionsLoaded = false; // Connections tab re-fetches to include new contact
   toast('Connected! You can now reveal their contact.', { variant: 'success' });
+
+  // Auto-navigate to the Connections tab so the user immediately sees the
+  // new contact. Works whether the accept came from a Requests card or
+  // from the profile modal (modal is closed first if open).
+  closeModal();
+  activateTab('connections');
 }
 
 async function doDecline(userId, connId) {
