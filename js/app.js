@@ -111,9 +111,11 @@ function updateNavbarAvatar() {
 // --- Page initializers (shells) ----------------------------------------------
 
 async function initLanding() {
-  // Public marketing page — no auth required. Hook hero CTA into login flow.
-  const ctaPrimary = $('[data-cta="primary"]');
-  on(ctaPrimary, 'click', () => { window.location.href = ROUTES.login; });
+  // Public marketing page — no auth required. Hook ALL CTA buttons into login flow.
+  // Using $$ (querySelectorAll) so both hero + bottom-section CTAs are wired.
+  $$('[data-cta="primary"]').forEach((btn) => {
+    on(btn, 'click', () => { window.location.href = ROUTES.login; });
+  });
 }
 
 async function initLogin() {
