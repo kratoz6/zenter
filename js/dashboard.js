@@ -268,8 +268,15 @@ function wireConnectionActions() {
 
 // ─── Connection actions ───────────────────────────────────────────────────────
 
+// Single helper: notify any mounted Connections page that the user's
+// connection state changed and the 3-section layout should refresh.
+function notifyConnectionsChanged() {
+  window.dispatchEvent(new CustomEvent('hm:connections-changed'));
+}
+
 async function doConnect(userId) {
   if (!myUserId || !userId) return;
+  if (myUserId === userId) return; // prevent self-connection
   const existing = Relationships.get(userId);
   if (existing.status !== REL.NONE) return;
 
@@ -283,6 +290,8 @@ async function doConnect(userId) {
     return;
   }
   Relationships.set(userId, { status: REL.PENDING_OUT, role: 'sender', connectionId: data?.id });
+  connectionsLoaded = false;
+  notifyConnectionsChanged();
   toast('Request sent!', { variant: 'success' });
 }
 
@@ -290,20 +299,32 @@ async function doAccept(userId, connId) {
   const { error } = await respondToRequest(connId, 'accepted');
   if (error) { toast(error.message || 'Could not accept.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.CONNECTED, role: 'receiver', connectionId: connId });
-  connectionsLoaded = false; // Connections tab re-fetches on next activation to include new contact
+  connectionsLoaded = false; // Connections tab re-fetches to include new contact
+  notifyConnectionsChanged();
   toast('Connected! You can now reveal their contact.', { variant: 'success' });
+
+  // Auto-navigate to the Connections tab so the user immediately sees the
+  // new contact. Works whether the accept came from a Requests card or
+  // from the profile modal (modal is closed first if open).
+  closeModal();
+  activateTab('connections');
 }
 
 async function doDecline(userId, connId) {
   const { error } = await respondToRequest(connId, 'rejected');
   if (error) { toast(error.message || 'Could not decline.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.REJECTED, role: 'receiver', connectionId: connId });
+  connectionsLoaded = false;
+  notifyConnectionsChanged();
 }
 
 async function doWithdraw(userId, connId) {
   const { error } = await deleteRequest(connId);
   if (error) { toast(error.message || 'Could not withdraw.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.NONE });
+  connectionsLoaded = false;
+  notifyConnectionsChanged();
+  toast('Request cancelled.', { variant: 'info' });
 }
 
 function doReveal() {
