@@ -48,8 +48,8 @@
             <a href="/contact.html" class="hm-nav-profile__item" role="menuitem">Contact us</a>
           </li>
           <li role="none">
-            <a href="mailto:support@zenter.in?subject=Zenter%20Feedback"
-               class="hm-nav-profile__item" role="menuitem">Feedback</a>
+            <button type="button" class="hm-nav-profile__item" role="menuitem"
+                    data-action="feedback">Feedback</button>
           </li>
           <li role="none">
             <button
@@ -66,3 +66,22 @@
 
   </div><!-- /.hm-navbar__inner -->
 </nav>
+
+<!-- ── Feedback modal — wired by app.js; loaded on every page via navbar ── -->
+<div id="hm-feedback-overlay" class="hm-feedback-overlay"
+     role="dialog" aria-modal="true" aria-labelledby="hm-feedback-title">
+  <div class="hm-feedback-box">
+    <h3 id="hm-feedback-title">😊 We'd love your feedback</h3>
+    <p class="hm-feedback-sub">Help us improve Zenter — your thoughts go directly to the team.</p>
+    <textarea id="hm-feedback-text" class="hm-textarea hm-feedback-ta"
+              rows="4" maxlength="1000"
+              placeholder="Share your thoughts, suggestions or issues…"></textarea>
+    <p id="hm-feedback-err" class="text-danger small mt-1" hidden></p>
+    <div class="hm-feedback-actions">
+      <button type="button" class="hm-btn hm-btn--ghost hm-btn--sm"
+              id="hm-feedback-cancel">Cancel</button>
+      <button type="button" class="hm-btn hm-btn--primary hm-btn--sm"
+              id="hm-feedback-submit">Submit</button>
+    </div>
+  </div>
+</div>

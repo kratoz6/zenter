@@ -1,5 +1,34 @@
 /* HallMate — Reusable component library: buttons, cards, forms, badges, navbar, footer, toasts, loaders. */
 
+/* ── Feedback modal ─────────────────────────────────────────────────────────
+   Loaded on every page via navbar component — must not depend on dashboard.css */
+.hm-feedback-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 1060;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  align-items: center; justify-content: center;
+  padding: var(--hm-space-4);
+}
+.hm-feedback-overlay.is-open { display: flex; }
+
+.hm-feedback-box {
+  width: 100%; max-width: 400px;
+  background: var(--hm-surface);
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-xl);
+  box-shadow: var(--hm-shadow-lg);
+  padding: var(--hm-space-5);
+}
+.hm-feedback-box h3  { margin: 0 0 var(--hm-space-2); font-size: var(--hm-text-xl); }
+.hm-feedback-sub     { margin: 0 0 var(--hm-space-4); font-size: var(--hm-text-sm); color: var(--hm-text-muted); }
+.hm-feedback-ta      { width: 100%; resize: vertical; min-height: 100px; }
+.hm-feedback-actions {
+  display: flex; gap: var(--hm-space-2); justify-content: flex-end;
+  flex-wrap: wrap; margin-top: var(--hm-space-4);
+}
+
 /* ============================================================
    NAVBAR
 ============================================================ */

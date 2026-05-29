@@ -196,6 +196,20 @@ export function deleteConnectionsBetween(userIdA, userIdB) {
   );
 }
 
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+/** Insert a feedback row. user_id, user_name, exam_type are all optional. */
+export function submitFeedback({ user_id = null, user_name = null, exam_type = null, feedback_message }) {
+  return query(
+    from('feedbacks').insert({
+      user_id,
+      user_name,
+      exam_type,
+      feedback_message: String(feedback_message).trim(),
+    }).select('id').single()
+  );
+}
+
 export function sendConnectionRequest(senderId, receiverId) {
   return query(
     from('connections')
