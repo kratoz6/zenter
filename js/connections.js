@@ -188,7 +188,7 @@ function cardHead(user) {
       <div class="hm-mate__head-info">
         <p class="hm-mate__name">${esc(name)}</p>
         <div class="hm-mate__badges">
-          ${user.gender ? `<span class="hm-badge ${genderCls}">${genderIcon} ${esc(user.gender)}</span>` : ''}
+          ${user.gender ? `<span class="hm-badge ${genderCls}"><span class="hm-gender-symbol">${genderIcon}</span> ${esc(user.gender)}</span>` : ''}
           <span class="hm-badge hm-badge--verified">✓ Verified</span>
         </div>
       </div>
