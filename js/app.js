@@ -2,7 +2,7 @@
 // Every page loads this single file. It mounts shared chrome, wires up nav state,
 // and dispatches to a page-specific initializer based on the current route.
 
-import { mountChrome, highlightActiveNav, $, $$, on } from './ui.js';
+import { mountChrome, highlightActiveNav, $, $$, on, toast } from './ui.js';
 import { whenReady, onAuthChange, getCurrentUser, logout, requireAuth, redirectIfAuthed } from './auth.js';
 import { currentRoute } from './utils.js';
 import { ROUTES, STORAGE_KEYS } from './config.js';
@@ -46,6 +46,78 @@ function wireGlobalNav() {
     if (!target) return;
     e.preventDefault();
     logout().catch((err) => console.error('[app] logout failed', err));
+  });
+
+  wireFeedbackModal();
+}
+
+// ─── Feedback modal ───────────────────────────────────────────────────────────
+
+function wireFeedbackModal() {
+  const overlay  = document.getElementById('hm-feedback-overlay');
+  const ta       = document.getElementById('hm-feedback-text');
+  const errEl    = document.getElementById('hm-feedback-err');
+  if (!overlay) return;
+
+  const openFeedback = () => {
+    if (ta)    ta.value = '';
+    if (errEl) errEl.hidden = true;
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => ta?.focus(), 60);
+  };
+
+  const closeFeedback = () => {
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+
+  // Open on Feedback button click
+  on(document, 'click', (e) => {
+    if (e.target.closest('[data-action="feedback"]')) { e.preventDefault(); openFeedback(); }
+  });
+
+  // Close on Cancel button or backdrop click
+  on(document, 'click', (e) => {
+    if (e.target.id === 'hm-feedback-cancel' || e.target === overlay) closeFeedback();
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('is-open')) closeFeedback();
+  });
+
+  // Submit
+  on(document, 'click', async (e) => {
+    if (e.target.id !== 'hm-feedback-submit') return;
+
+    const msg = (ta?.value || '').trim();
+    if (!msg) {
+      if (errEl) { errEl.textContent = 'Please enter your feedback.'; errEl.hidden = false; }
+      return;
+    }
+    if (errEl) errEl.hidden = true;
+
+    const btn = document.getElementById('hm-feedback-submit');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+    try {
+      const { submitFeedback } = await import('./supabase.js');
+      const user = getCurrentUser();
+      const { error } = await submitFeedback({ feedback_message: msg });
+
+      if (error) {
+        if (errEl) { errEl.textContent = 'Could not submit. Please try again.'; errEl.hidden = false; }
+      } else {
+        closeFeedback();
+        toast('Thank you for your feedback! 😊', { variant: 'success' });
+      }
+    } catch (err) {
+      console.error('[feedback] submit error', err);
+      if (errEl) { errEl.textContent = 'Something went wrong. Please try again.'; errEl.hidden = false; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit'; }
+    }
   });
 }
 
@@ -111,9 +183,11 @@ function updateNavbarAvatar() {
 // --- Page initializers (shells) ----------------------------------------------
 
 async function initLanding() {
-  // Public marketing page — no auth required. Hook hero CTA into login flow.
-  const ctaPrimary = $('[data-cta="primary"]');
-  on(ctaPrimary, 'click', () => { window.location.href = ROUTES.login; });
+  // Public marketing page — no auth required. Hook ALL CTA buttons into login flow.
+  // Using $$ (querySelectorAll) so both hero + bottom-section CTAs are wired.
+  $$('[data-cta="primary"]').forEach((btn) => {
+    on(btn, 'click', () => { window.location.href = ROUTES.login; });
+  });
 }
 
 async function initLogin() {
