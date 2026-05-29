@@ -1,5 +1,30 @@
 /* HallMate — Dashboard + profile page styling. */
 
+/* ── Connections page — received requests link banner ───────────────────── */
+.hm-conn-requests-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hm-space-4) var(--hm-space-5);
+  background: var(--hm-surface);
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-lg);
+  text-decoration: none;
+  color: var(--hm-text);
+  font-weight: 600;
+  margin-bottom: var(--hm-space-5);
+  transition: background var(--hm-duration-fast) var(--hm-ease),
+              border-color var(--hm-duration-fast) var(--hm-ease);
+}
+.hm-conn-requests-link:hover {
+  background: var(--hm-surface-2);
+  border-color: var(--hm-primary);
+  text-decoration: none;
+  color: var(--hm-text);
+}
+.hm-conn-requests-link__label { display: flex; align-items: center; }
+.hm-conn-requests-link__arrow { color: var(--hm-text-muted); font-size: var(--hm-text-lg); }
+
 /* ── Connection 3-section layout ─────────────────────────────────────────── */
 .hm-conn-section { margin-bottom: var(--hm-space-7); }
 .hm-conn-section:last-child { margin-bottom: 0; }

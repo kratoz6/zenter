@@ -75,10 +75,10 @@ export async function runConnections(root, firebaseUser) {
   const accepted = allConns.filter(c => c.status === 'accepted');
   // Sent requests section removed — users manage outgoing requests from Find Mates.
 
-  const otherIds = [...new Set([
-    ...received.map(c => c.sender_id),
-    ...accepted.map(c => c.sender_id === me.id ? c.receiver_id : c.sender_id),
-  ])];
+  // Only fetch profiles for accepted connections — received requests use a count link.
+  const otherIds = [...new Set(
+    accepted.map(c => c.sender_id === me.id ? c.receiver_id : c.sender_id)
+  )];
 
   let byId = {};
   if (otherIds.length > 0) {
@@ -87,12 +87,7 @@ export async function runConnections(root, firebaseUser) {
   }
 
   root.innerHTML = `
-    ${renderSection({
-      title: 'Received requests', icon: '🤝',
-      count: received.length,
-      empty: 'No pending requests.',
-      cards: received.map(c => receivedCard(byId[c.sender_id], c)),
-    })}
+    ${renderRequestsLink(received.length)}
     ${renderSection({
       title: 'Connected', icon: '🔗',
       count: accepted.length,
@@ -145,6 +140,23 @@ function renderError(root, msg) {
       <p class="hm-text-muted">${esc(msg)}</p>
       <button type="button" class="hm-btn hm-btn--ghost" onclick="location.reload()">Try again</button>
     </div>`;
+}
+
+// Compact clickable banner — navigates to the Requests tab on dashboard.
+// href="/dashboard.html#requests" works from both /connections.html standalone
+// and from inside the dashboard tab (hashchange → activateTab('requests')).
+function renderRequestsLink(count) {
+  return `
+    <a href="/dashboard.html#requests" class="hm-conn-requests-link"
+       aria-label="View ${count} received connection request${count !== 1 ? 's' : ''}">
+      <span class="hm-conn-requests-link__label">
+        🤝 Received Requests
+        ${count > 0
+          ? `<span class="hm-nav-badge" style="margin-left:8px;">${count}</span>`
+          : '<span style="margin-left:6px;font-size:var(--hm-text-xs);color:var(--hm-text-muted);font-weight:400;">None</span>'}
+      </span>
+      <span class="hm-conn-requests-link__arrow">→</span>
+    </a>`;
 }
 
 function renderSection({ title, icon, count, empty, cards }) {
