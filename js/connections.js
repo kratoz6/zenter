@@ -72,13 +72,11 @@ export async function runConnections(root, firebaseUser) {
 
   // Partition into the 3 sections.
   const received = allConns.filter(c => c.status === 'pending'  && c.receiver_id === me.id);
-  const sent     = allConns.filter(c => c.status === 'pending'  && c.sender_id   === me.id);
   const accepted = allConns.filter(c => c.status === 'accepted');
+  // Sent requests section removed — users manage outgoing requests from Find Mates.
 
-  // Fetch profile data for all unique other-users across all sections.
   const otherIds = [...new Set([
     ...received.map(c => c.sender_id),
-    ...sent.map(c => c.receiver_id),
     ...accepted.map(c => c.sender_id === me.id ? c.receiver_id : c.sender_id),
   ])];
 
@@ -94,12 +92,6 @@ export async function runConnections(root, firebaseUser) {
       count: received.length,
       empty: 'No pending requests.',
       cards: received.map(c => receivedCard(byId[c.sender_id], c)),
-    })}
-    ${renderSection({
-      title: 'Sent requests', icon: '📤',
-      count: sent.length,
-      empty: 'No pending sent requests.',
-      cards: sent.map(c => sentCard(byId[c.receiver_id], c)),
     })}
     ${renderSection({
       title: 'Connected', icon: '🔗',
@@ -170,87 +162,105 @@ function renderSection({ title, icon, count, empty, cards }) {
     </section>`;
 }
 
-// ─── Card builders ─────────────────────────────────────────────────────────
+// ─── Card builders (unified with Find Mates layout) ──────────────────────
 
-function basicHeader(user) {
-  const name     = user.full_name || 'Unknown';
-  const examLoc  = [user.exam_centre_district, user.exam_centre_state].filter(Boolean).join(', ');
-  const location = examLoc || [user.district, user.state].filter(Boolean).join(', ') || '—';
-  const color    = avatarColor(name);
-  const initials = avatarInitials(name);
+// Shared head — identical to mateCard() in dashboard.js
+function cardHead(user) {
+  const name       = user.full_name || 'Unknown';
+  const genderIcon = { Female: '♀', Male: '♂' }[user.gender] || '';
+  const genderCls  = { Female: 'hm-badge--female', Male: 'hm-badge--male' }[user.gender] || '';
   return `
     <div class="hm-mate__head">
-      <div class="hm-avatar"
-           style="background:${color};color:#fff;flex-shrink:0;"
-           aria-hidden="true">${esc(initials)}</div>
-      <div style="min-width:0;">
+      <div class="hm-avatar hm-avatar--card"
+           style="background:${avatarColor(name)};color:#fff;" aria-hidden="true">${esc(avatarInitials(name))}</div>
+      <div class="hm-mate__head-info">
         <p class="hm-mate__name">${esc(name)}</p>
-        <p class="hm-mate__sub">${esc(location)}</p>
+        <div class="hm-mate__badges">
+          ${user.gender ? `<span class="hm-badge ${genderCls}">${genderIcon} ${esc(user.gender)}</span>` : ''}
+          <span class="hm-badge hm-badge--verified">✓ Verified</span>
+        </div>
       </div>
-    </div>
-    <p class="hm-mate__center">🏛️ ${esc(user.exam_center || '—')}</p>
-    ${travelChips(user.travel_mode, user.stay_plan) ? `<div class="hm-mate__chips">${travelChips(user.travel_mode, user.stay_plan)}</div>` : ''}
-  `;
+    </div>`;
 }
 
-// 1. RECEIVED — sender sent me a request; Accept or Reject. No phone.
+// Shared body — route timeline identical to mateCard() in dashboard.js
+function cardBody(user) {
+  const homeDistrict = user.district || '';
+  const homeState    = user.state    || '';
+  const homeLocHtml  = homeDistrict && homeState
+    ? `<strong>${esc(homeDistrict)}</strong><span class="hm-loc-state">, ${esc(homeState)}</span>`
+    : `<strong>${esc(homeDistrict || homeState || '—')}</strong>`;
+  const centre   = user.exam_center || '';
+  const examDist = user.exam_centre_district || user.district || '';
+  const examSt   = user.exam_centre_state    || user.state    || '';
+  const examLoc  = [examDist, examSt].filter(Boolean).join(', ');
+  const travelIcon  = user.travel_mode && TRAVEL_ICON[user.travel_mode];
+  const travelLabel = user.travel_mode && TRAVEL_LABEL[user.travel_mode];
+  const stayIcon    = user.stay_plan   && STAY_ICON[user.stay_plan];
+  const stayLabel   = user.stay_plan   && STAY_LABEL[user.stay_plan];
+  const hasBadges   = !!(travelLabel || stayLabel);
+  return `
+    <div class="hm-mate__body">
+      <div class="hm-mate__route-wrap">
+        <div class="hm-mate__route-track">
+          <div class="hm-mate__icon-bubble">🏠</div>
+          <div class="hm-mate__route-connector">
+            <div class="hm-mate__route-dot hm-mate__route-dot--top"></div>
+            <div class="hm-mate__route-dashes"></div>
+            <div class="hm-mate__route-dot hm-mate__route-dot--bottom"></div>
+          </div>
+          <div class="hm-mate__icon-bubble">📋</div>
+        </div>
+        <div class="hm-mate__route-info">
+          <p class="hm-mate__home-loc">${homeLocHtml}</p>
+          <div class="hm-mate__exam-info">
+            ${centre  ? `<p class="hm-mate__centre-name">${esc(centre)}</p>`    : ''}
+            ${examLoc ? `<p class="hm-mate__centre-loc">📍 ${esc(examLoc)}</p>` : ''}
+          </div>
+        </div>
+      </div>
+      ${hasBadges ? `<div class="hm-mate__v-divider"></div>` : ''}
+      ${hasBadges ? `
+        <div class="hm-mate__badge-cards">
+          ${travelLabel ? `<div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">${esc(travelIcon)}</span><span class="hm-mate__badge-label">${esc(travelLabel)}</span></div>` : ''}
+          ${stayLabel   ? `<div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">${esc(stayIcon)}</span><span class="hm-mate__badge-label">${esc(stayLabel)}</span></div>` : ''}
+        </div>` : ''}
+    </div>`;
+}
+
+// 1. RECEIVED — Accept or Reject. No phone revealed.
 function receivedCard(user, conn) {
   if (!user) return '';
   return `
-    <div class="hm-card hm-mate" data-conn-card-id="${esc(user.id)}">
-      ${basicHeader(user)}
-      <div class="d-flex gap-2"
-           style="margin-top:auto;padding-top:var(--hm-space-3);border-top:1px solid var(--hm-border);">
-        <button class="hm-btn hm-btn--primary hm-btn--sm" style="flex:1;"
-          data-conn-action="accept" data-user-id="${esc(user.id)}" data-conn-id="${esc(conn.id)}">
-          Accept
-        </button>
-        <button class="hm-btn hm-btn--ghost hm-btn--sm" style="flex:1;"
-          data-conn-action="decline" data-user-id="${esc(user.id)}" data-conn-id="${esc(conn.id)}">
-          Reject
-        </button>
+    <article class="hm-card hm-mate" data-conn-card-id="${esc(user.id)}">
+      ${cardHead(user)}
+      ${cardBody(user)}
+      <div class="hm-mate__footer">
+        <span class="hm-mate__joined">Wants to connect</span>
+        <div class="d-flex gap-2 flex-shrink-0">
+          <button class="hm-btn hm-btn--ghost hm-btn--sm"
+            data-conn-action="decline" data-user-id="${esc(user.id)}" data-conn-id="${esc(conn.id)}">Reject</button>
+          <button class="hm-btn hm-btn--primary hm-btn--sm"
+            data-conn-action="accept"  data-user-id="${esc(user.id)}" data-conn-id="${esc(conn.id)}">Accept</button>
+        </div>
       </div>
-    </div>`;
+    </article>`;
 }
 
-// 2. SENT — I sent a request, waiting. Pending badge + Cancel. No phone.
-function sentCard(user, conn) {
-  if (!user) return '';
-  return `
-    <div class="hm-card hm-mate" data-conn-card-id="${esc(user.id)}">
-      ${basicHeader(user)}
-      <div class="d-flex gap-2 align-items-center"
-           style="margin-top:auto;padding-top:var(--hm-space-3);border-top:1px solid var(--hm-border);">
-        <span class="hm-badge hm-badge--info"
-              style="font-size:11px;flex:1;text-align:center;padding:6px 8px;">⌛ Pending</span>
-        <button class="hm-btn hm-btn--ghost hm-btn--sm"
-          data-conn-action="withdraw" data-user-id="${esc(user.id)}" data-conn-id="${esc(conn.id)}">
-          Cancel
-        </button>
-      </div>
-    </div>`;
-}
-
-// 3. CONNECTED — mutual accept. Full info + phone reveal + Block.
+// 2. CONNECTED — phone + WhatsApp/Call revealed + Block action.
 function connectedCard(user, conn) {
   if (!user) return '';
-  const name        = user.full_name   || 'Unknown';
-  const phone       = user.phone       || '';
+  const name        = user.full_name || 'Unknown';
+  const phone       = user.phone     || '';
   const phonePretty = phone ? formatPhonePretty(phone) : '—';
   const digits      = phone.replace(/\D/g, '');
   const waHref      = digits ? `https://wa.me/${digits}` : '';
   const telHref     = phone  ? `tel:${phone}` : '';
-  const bio         = bioSnippet(user.bio);
-  const connectedOn = formatConnectedDate(conn.updated_at || conn.created_at);
-
   return `
-    <div class="hm-card hm-mate" data-conn-card-id="${esc(user.id)}">
-      ${basicHeader(user)}
-      ${bio ? `<p class="hm-mate__bio">${esc(bio)}</p>` : ''}
-
-      <!-- Revealed contact -->
-      <div class="hm-contact-revealed"
-           style="margin-top:auto;padding-top:var(--hm-space-3);border-top:1px solid var(--hm-border);">
+    <article class="hm-card hm-mate" data-conn-card-id="${esc(user.id)}">
+      ${cardHead(user)}
+      ${cardBody(user)}
+      <div class="hm-contact-revealed" style="padding-top:var(--hm-space-3);border-top:1px solid var(--hm-border);">
         <p class="hm-contact-revealed__number">${esc(phonePretty)}</p>
         <div class="hm-contact-revealed__links">
           ${waHref  ? `<a href="${esc(waHref)}" target="_blank" rel="noopener noreferrer"
@@ -258,16 +268,13 @@ function connectedCard(user, conn) {
           ${telHref ? `<a href="${esc(telHref)}"
                           class="hm-btn hm-btn--ghost hm-btn--sm">📞 Call</a>` : ''}
         </div>
-        ${connectedOn ? `<p class="hm-text-subtle" style="font-size:var(--hm-text-xs);margin:8px 0 0;">✓ ${esc(connectedOn)}</p>` : ''}
       </div>
-
-      <!-- Block action -->
       <div style="margin-top:var(--hm-space-2);text-align:right;">
         <button class="hm-modal__block-btn" type="button"
                 data-conn-action="block" data-user-id="${esc(user.id)}"
                 aria-label="Block ${esc(name)}">🚫 Block user</button>
       </div>
-    </div>`;
+    </article>`;
 }
 
 // ─── Small helpers ─────────────────────────────────────────────────────────
@@ -276,53 +283,34 @@ const AVATAR_COLORS = [
   '#7C3AED', '#2563EB', '#059669', '#D97706',
   '#DC2626', '#DB2777', '#0891B2',
 ];
-
 function avatarColor(name) {
   let h = 0;
   for (const ch of (name || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
-
 function avatarInitials(name) {
   const safe = (name || '').trim();
   if (!safe) return '?';
   return safe.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
+// Split icon/label maps — match dashboard.js exactly
+const TRAVEL_ICON = {
+  'By train':   '🚂', 'By flight':  '✈️', 'By bus': '🚌',
+  'Self-drive': '🚗', 'Shared Cab': '🚕', 'Other':  '🚐',
+};
 const TRAVEL_LABEL = {
-  'By train':   '🚂 Train',
-  'By flight':  '✈️ Flight',
-  'By bus':     '🚌 Bus',
-  'Self-drive': '🚗 Self Drive',
-  'Shared Cab': '🚕 Shared Cab',
-  'Other':      '🚗 Other',
+  'By train':   'Train',  'By flight':  'Flight', 'By bus': 'Bus',
+  'Self-drive': 'Self Drive', 'Shared Cab': 'Shared Cab', 'Other': 'Other',
+};
+const STAY_ICON = {
+  'Need accommodation':     '🏨', 'Have accommodation': '🏠',
+  'Looking for room share': '🛏️', 'Other':              '🏡',
 };
 const STAY_LABEL = {
-  'Need accommodation':     '🏨 Needs stay',
-  'Have accommodation':     '🏠 Has stay',
-  'Looking for room share': '🛏️ Room share',
-  'Other':                  '🏡 Other',
+  'Need accommodation':     'Needs stay', 'Have accommodation': 'Has stay',
+  'Looking for room share': 'Room share', 'Other':              'Other',
 };
-
-function travelChips(travelMode, stayPlan) {
-  const chips = [];
-  if (travelMode && TRAVEL_LABEL[travelMode])
-    chips.push(`<span class="hm-chip hm-chip--sm">${esc(TRAVEL_LABEL[travelMode])}</span>`);
-  if (stayPlan && STAY_LABEL[stayPlan])
-    chips.push(`<span class="hm-chip hm-chip--sm">${esc(STAY_LABEL[stayPlan])}</span>`);
-  return chips.join('');
-}
-
-function bioSnippet(bio, maxLen = 60) {
-  if (!bio) return '';
-  const s = String(bio).trim();
-  return s.length > maxLen ? s.slice(0, maxLen - 1) + '…' : s;
-}
-
-function formatConnectedDate(iso) {
-  if (!iso) return '';
-  return 'Connected on ' + new Date(iso).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
 
 function esc(str) {
   return String(str ?? '').replace(
