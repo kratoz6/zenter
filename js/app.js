@@ -53,18 +53,34 @@ function wireGlobalNav() {
 
 // ─── Feedback modal ───────────────────────────────────────────────────────────
 
+// Cached once per session when the feedback modal first opens.
+// Avoids a Supabase call on every submit while still capturing user metadata.
+let _feedbackUserCache = null;
+
 function wireFeedbackModal() {
   const overlay  = document.getElementById('hm-feedback-overlay');
   const ta       = document.getElementById('hm-feedback-text');
   const errEl    = document.getElementById('hm-feedback-err');
   if (!overlay) return;
 
-  const openFeedback = () => {
+  const openFeedback = async () => {
     if (ta)    ta.value = '';
     if (errEl) errEl.hidden = true;
     overlay.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(() => ta?.focus(), 60);
+
+    // Lazy-fetch user profile once per session for metadata enrichment.
+    if (!_feedbackUserCache) {
+      const user = getCurrentUser();
+      if (user?.phoneNumber) {
+        try {
+          const { getProfileByPhone } = await import('./supabase.js');
+          const { data } = await getProfileByPhone(user.phoneNumber);
+          if (data) _feedbackUserCache = data; // { id, full_name, exam_type, … }
+        } catch { /* non-fatal — metadata is optional */ }
+      }
+    }
   };
 
   const closeFeedback = () => {
@@ -103,8 +119,12 @@ function wireFeedbackModal() {
 
     try {
       const { submitFeedback } = await import('./supabase.js');
-      const user = getCurrentUser();
-      const { error } = await submitFeedback({ feedback_message: msg });
+      const { error } = await submitFeedback({
+        user_id:          _feedbackUserCache?.id        || null,
+        user_name:        _feedbackUserCache?.full_name || null,
+        exam_type:        _feedbackUserCache?.exam_type || null,
+        feedback_message: msg,
+      });
 
       if (error) {
         if (errEl) { errEl.textContent = 'Could not submit. Please try again.'; errEl.hidden = false; }
