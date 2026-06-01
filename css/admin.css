@@ -1,0 +1,266 @@
+/* Zenter Admin Platform — Phase 1 foundation styles.
+   Dark operational theme, intentionally separate from the public app theme
+   so admin UI changes never leak into user-facing pages. */
+
+:root {
+  --adm-bg:        #0F172A;  /* slate-900 */
+  --adm-surface:   #1E293B;  /* slate-800 */
+  --adm-surface-2: #334155;  /* slate-700 */
+  --adm-border:    #334155;
+  --adm-text:      #F1F5F9;  /* slate-100 */
+  --adm-text-muted:#94A3B8;  /* slate-400 */
+  --adm-text-dim:  #64748B;  /* slate-500 */
+  --adm-primary:   #FF6B35;  /* keep Zenter orange */
+  --adm-success:   #10B981;
+  --adm-warning:   #F59E0B;
+  --adm-danger:    #EF4444;
+  --adm-info:      #3B82F6;
+  --adm-sidebar-w: 240px;
+  --adm-topbar-h:  56px;
+}
+
+/* ── Reset for admin shell — keeps it visually independent of style.css ── */
+body.adm-body {
+  margin: 0;
+  background: var(--adm-bg);
+  color: var(--adm-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Loading gate — never let admin UI flash for non-admins ── */
+.adm-gate {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--adm-bg);
+  gap: 16px;
+  transition: opacity 200ms ease-out;
+}
+.adm-gate.is-hidden { opacity: 0; pointer-events: none; }
+.adm-gate__spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--adm-surface-2);
+  border-top-color: var(--adm-primary);
+  border-radius: 50%;
+  animation: adm-spin 0.8s linear infinite;
+}
+.adm-gate__label { color: var(--adm-text-muted); font-size: 13px; }
+@keyframes adm-spin { to { transform: rotate(360deg); } }
+
+/* ── Layout: sidebar + main ── */
+.adm-shell {
+  display: grid;
+  grid-template-columns: var(--adm-sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.adm-sidebar {
+  background: var(--adm-surface);
+  border-right: 1px solid var(--adm-border);
+  display: flex; flex-direction: column;
+  padding: 20px 0;
+  position: sticky; top: 0; height: 100vh;
+}
+.adm-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px 20px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700; font-size: 18px;
+  text-decoration: none; color: var(--adm-text);
+}
+.adm-brand__mark {
+  width: 32px; height: 32px;
+  background: var(--adm-primary); color: #fff;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px;
+}
+.adm-brand__tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+  background: var(--adm-surface-2); color: var(--adm-text-muted);
+  padding: 2px 6px; border-radius: 4px;
+  margin-left: auto; text-transform: uppercase;
+}
+
+.adm-nav { list-style: none; margin: 0; padding: 0; flex: 1; }
+.adm-nav li { margin: 2px 8px; }
+.adm-nav a {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  color: var(--adm-text-muted);
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 500;
+  transition: background 120ms, color 120ms;
+}
+.adm-nav a:hover { background: var(--adm-surface-2); color: var(--adm-text); }
+.adm-nav a.is-active {
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--adm-primary);
+}
+.adm-nav__icon { width: 18px; text-align: center; font-size: 16px; }
+
+.adm-sidebar__footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--adm-border);
+  font-size: 12px; color: var(--adm-text-dim);
+}
+.adm-sidebar__footer a { color: var(--adm-text-muted); text-decoration: none; }
+.adm-sidebar__footer a:hover { color: var(--adm-text); }
+
+/* ── Main area ── */
+.adm-main {
+  display: flex; flex-direction: column;
+  min-width: 0; /* prevent overflow on long content */
+}
+.adm-topbar {
+  height: var(--adm-topbar-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--adm-border);
+  background: var(--adm-surface);
+  position: sticky; top: 0; z-index: 10;
+}
+.adm-topbar__title { font-size: 14px; font-weight: 600; color: var(--adm-text); }
+.adm-topbar__user {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--adm-text-muted);
+}
+.adm-topbar__avatar {
+  width: 28px; height: 28px;
+  background: var(--adm-primary); color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.adm-topbar__logout {
+  background: none; border: 1px solid var(--adm-border);
+  color: var(--adm-text-muted);
+  padding: 6px 12px; border-radius: 6px;
+  font-size: 12px; cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.adm-topbar__logout:hover { background: var(--adm-surface-2); color: var(--adm-text); }
+
+.adm-content {
+  padding: 24px;
+  flex: 1;
+}
+
+/* ── Section panels (hash-routed; show only the active one) ── */
+.adm-panel { display: none; }
+.adm-panel.is-active { display: block; animation: adm-fade-in 200ms ease-out; }
+@keyframes adm-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.adm-h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+.adm-sub { font-size: 13px; color: var(--adm-text-muted); margin: 0 0 24px; }
+
+/* ── Stat cards (dashboard) ── */
+.adm-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.adm-stat {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.adm-stat__label {
+  font-size: 11px; font-weight: 600;
+  color: var(--adm-text-muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.adm-stat__value {
+  font-size: 28px; font-weight: 700;
+  color: var(--adm-text);
+  font-family: 'Inter', sans-serif;
+  line-height: 1;
+}
+.adm-stat__hint { font-size: 11px; color: var(--adm-text-dim); margin-top: 6px; }
+
+/* ── Tables ── */
+.adm-card {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.adm-card__header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--adm-border);
+  font-size: 14px; font-weight: 600;
+}
+.adm-card__body { padding: 0; }
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.adm-table th, .adm-table td {
+  padding: 12px 20px;
+  text-align: left;
+  border-bottom: 1px solid var(--adm-border);
+}
+.adm-table th {
+  font-size: 11px; font-weight: 600;
+  color: var(--adm-text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.02);
+}
+.adm-table tbody tr:last-child td { border-bottom: 0; }
+.adm-table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+/* ── Role pills ── */
+.adm-pill {
+  display: inline-block;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+}
+.adm-pill--admin     { background: rgba(255, 107, 53, 0.15); color: var(--adm-primary); }
+.adm-pill--moderator { background: rgba(59, 130, 246, 0.15); color: var(--adm-info); }
+.adm-pill--user      { background: rgba(148, 163, 184, 0.15); color: var(--adm-text-muted); }
+.adm-pill--success   { background: rgba(16, 185, 129, 0.15); color: var(--adm-success); }
+.adm-pill--warning   { background: rgba(245, 158, 11, 0.15); color: var(--adm-warning); }
+
+/* ── Empty state ── */
+.adm-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--adm-text-muted);
+  font-size: 13px;
+}
+.adm-empty__icon { font-size: 28px; margin-bottom: 8px; opacity: 0.6; }
+
+/* ── Placeholder section card for Reports/Exams/Analytics/Settings stubs ── */
+.adm-placeholder {
+  background: var(--adm-surface);
+  border: 1px dashed var(--adm-border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--adm-text-muted);
+}
+.adm-placeholder h3 { color: var(--adm-text); margin: 0 0 6px; font-size: 16px; }
+.adm-placeholder p  { margin: 0; font-size: 13px; }
+.adm-placeholder__icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+
+/* ── Mobile responsive ── */
+@media (max-width: 768px) {
+  :root { --adm-sidebar-w: 64px; }
+  .adm-brand__text, .adm-brand__tag, .adm-nav span:not(.adm-nav__icon),
+  .adm-sidebar__footer { display: none; }
+  .adm-brand { justify-content: center; padding: 0 0 20px; }
+  .adm-nav a { justify-content: center; padding: 12px 0; }
+  .adm-content { padding: 16px; }
+  .adm-stat__value { font-size: 22px; }
+  .adm-table th, .adm-table td { padding: 10px 12px; }
+}

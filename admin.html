@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0F172A" />
+  <title>Zenter Admin</title>
+  <meta name="description" content="Internal operational console." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="/css/admin.css" rel="stylesheet" />
+  <link rel="icon" href="/assets/logos/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="adm-body">
+
+  <!-- Gate: shown until requireAdmin() resolves. Non-admins are redirected
+       before this is dismissed → they never see the admin shell. -->
+  <div id="adm-gate" class="adm-gate" aria-live="polite">
+    <div class="adm-gate__spinner" aria-hidden="true"></div>
+    <p class="adm-gate__label">Verifying admin access…</p>
+  </div>
+
+  <div class="adm-shell" id="adm-shell" hidden>
+
+    <!-- ── Sidebar ── -->
+    <aside class="adm-sidebar" aria-label="Admin navigation">
+      <a href="#dashboard" class="adm-brand" aria-label="Zenter admin home">
+        <span class="adm-brand__mark">Z</span>
+        <span class="adm-brand__text">Zenter</span>
+        <span class="adm-brand__tag">Admin</span>
+      </a>
+
+      <ul class="adm-nav" id="adm-nav" role="list">
+        <li><a href="#dashboard" data-route="dashboard"><span class="adm-nav__icon">📊</span><span>Dashboard</span></a></li>
+        <li><a href="#users"     data-route="users"    ><span class="adm-nav__icon">👥</span><span>Users</span></a></li>
+        <li><a href="#feedback"  data-route="feedback" ><span class="adm-nav__icon">💬</span><span>Feedback</span></a></li>
+        <li><a href="#reports"   data-route="reports"  ><span class="adm-nav__icon">🚩</span><span>Reports</span></a></li>
+        <li><a href="#exams"     data-route="exams"    ><span class="adm-nav__icon">🎓</span><span>Exams</span></a></li>
+        <li><a href="#analytics" data-route="analytics"><span class="adm-nav__icon">📈</span><span>Analytics</span></a></li>
+        <li><a href="#settings"  data-route="settings" ><span class="adm-nav__icon">⚙️</span><span>Settings</span></a></li>
+      </ul>
+
+      <div class="adm-sidebar__footer">
+        <a href="/dashboard.html">← Back to app</a>
+      </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <main class="adm-main">
+      <div class="adm-topbar">
+        <span class="adm-topbar__title" id="adm-page-title">Dashboard</span>
+        <div class="adm-topbar__user">
+          <div class="adm-topbar__avatar" id="adm-user-avatar" aria-hidden="true">A</div>
+          <span id="adm-user-phone">—</span>
+          <button type="button" class="adm-topbar__logout" data-action="logout">Sign out</button>
+        </div>
+      </div>
+
+      <div class="adm-content">
+
+        <!-- Dashboard -->
+        <section class="adm-panel" id="adm-panel-dashboard" data-route="dashboard">
+          <h1 class="adm-h1">Dashboard</h1>
+          <p class="adm-sub">Operational overview of Zenter.</p>
+
+          <div class="adm-stats" id="adm-stats">
+            <div class="adm-stat"><div class="adm-stat__label">Total Users</div><div class="adm-stat__value" id="stat-total-users">—</div></div>
+            <div class="adm-stat"><div class="adm-stat__label">Active Users</div><div class="adm-stat__value" id="stat-active-users">—</div><div class="adm-stat__hint">Not paused</div></div>
+            <div class="adm-stat"><div class="adm-stat__label">Connections</div><div class="adm-stat__value" id="stat-connections">—</div><div class="adm-stat__hint">Accepted matches</div></div>
+            <div class="adm-stat"><div class="adm-stat__label">Feedback</div><div class="adm-stat__value" id="stat-feedback">—</div></div>
+            <div class="adm-stat"><div class="adm-stat__label">Reports</div><div class="adm-stat__value" id="stat-reports">—</div><div class="adm-stat__hint">User blocks</div></div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card__header">Latest signups</div>
+            <div class="adm-card__body" id="adm-latest-users"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Users -->
+        <section class="adm-panel" id="adm-panel-users" data-route="users">
+          <h1 class="adm-h1">Users</h1>
+          <p class="adm-sub">Recent signups across all exam ecosystems.</p>
+          <div class="adm-card">
+            <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Feedback -->
+        <section class="adm-panel" id="adm-panel-feedback" data-route="feedback">
+          <h1 class="adm-h1">Feedback</h1>
+          <p class="adm-sub">Messages submitted via the in-app Feedback modal.</p>
+          <div class="adm-card">
+            <div class="adm-card__body" id="adm-feedback-list"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Reports -->
+        <section class="adm-panel" id="adm-panel-reports" data-route="reports">
+          <h1 class="adm-h1">Reports</h1>
+          <p class="adm-sub">User-initiated blocks (with reasons).</p>
+          <div class="adm-card">
+            <div class="adm-card__body" id="adm-reports-list"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Exams -->
+        <section class="adm-panel" id="adm-panel-exams" data-route="exams">
+          <h1 class="adm-h1">Exams</h1>
+          <p class="adm-sub">Manage exam ecosystems and maintenance state.</p>
+          <div class="adm-placeholder">
+            <div class="adm-placeholder__icon">🎓</div>
+            <h3>Coming in Phase 2</h3>
+            <p>Toggle which exams are active vs. maintenance, set exam dates, manage centre catalogues.</p>
+          </div>
+        </section>
+
+        <!-- Analytics -->
+        <section class="adm-panel" id="adm-panel-analytics" data-route="analytics">
+          <h1 class="adm-h1">Analytics</h1>
+          <p class="adm-sub">Engagement, retention, and conversion metrics.</p>
+          <div class="adm-placeholder">
+            <div class="adm-placeholder__icon">📈</div>
+            <h3>Coming in Phase 2</h3>
+            <p>Signup funnel · daily active users · connection conversion · centre heat-maps.</p>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section class="adm-panel" id="adm-panel-settings" data-route="settings">
+          <h1 class="adm-h1">Settings</h1>
+          <p class="adm-sub">Admin roles, feature flags, support contacts.</p>
+          <div class="adm-placeholder">
+            <div class="adm-placeholder__icon">⚙️</div>
+            <h3>Coming in Phase 2</h3>
+            <p>Promote moderators · maintenance toggle · support contact updates · audit logs.</p>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

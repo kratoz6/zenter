@@ -37,9 +37,73 @@ export function from(table) {
 export function getUserByPhone(phone) {
   return query(
     from('users')
-      .select('id, profile_completed, exam_type')
+      .select('id, profile_completed, exam_type, role')
       .eq('phone', phone)
       .maybeSingle()
+  );
+}
+
+// ─── Admin platform — Phase 1 ────────────────────────────────────────────────
+
+/** Read-only role lookup by phone. Used by requireAdmin() guard. */
+export function getRoleByPhone(phone) {
+  return query(
+    from('users').select('role').eq('phone', phone).maybeSingle()
+  );
+}
+
+/** Fetch counts for the admin dashboard. Each query is small (HEAD count). */
+export async function getAdminStats() {
+  const headCount = (table, predicate) => {
+    const q = from(table).select('*', { count: 'exact', head: true });
+    return predicate ? predicate(q) : q;
+  };
+  const [usersR, activeR, conxR, feedbackR, reportsR] = await Promise.all([
+    headCount('users'),
+    headCount('users', q => q.or('is_profile_paused.is.null,is_profile_paused.eq.false')),
+    headCount('connections', q => q.eq('status', 'accepted')),
+    headCount('feedbacks'),
+    headCount('blocked_users'),
+  ]);
+  return {
+    data: {
+      totalUsers:  usersR.count    ?? 0,
+      activeUsers: activeR.count   ?? 0,
+      connections: conxR.count     ?? 0,
+      feedback:    feedbackR.count ?? 0,
+      reports:     reportsR.count  ?? 0,
+    },
+    error: usersR.error || activeR.error || conxR.error || feedbackR.error || reportsR.error || null,
+  };
+}
+
+/** Recent users list for the admin Users section. */
+export function getRecentUsers(limit = 50) {
+  return query(
+    from('users')
+      .select('id, full_name, gender, phone, exam_type, profile_completed, is_profile_paused, role, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  );
+}
+
+/** Recent feedback for the admin Feedback section. */
+export function getRecentFeedbacks(limit = 50) {
+  return query(
+    from('feedbacks')
+      .select('id, user_name, user_id, exam_type, feedback_message, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  );
+}
+
+/** Recent reports (blocks with reasons). */
+export function getRecentReports(limit = 50) {
+  return query(
+    from('blocked_users')
+      .select('id, blocker_user_id, blocked_user_id, reason, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
   );
 }
 
