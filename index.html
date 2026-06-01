@@ -32,6 +32,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="/css/style.css" rel="stylesheet" />
   <link href="/css/components.css" rel="stylesheet" />
+  <link href="/css/dashboard.css" rel="stylesheet" />
   <link href="/css/responsive.css" rel="stylesheet" />
 
   <link rel="icon" href="/assets/logos/favicon.svg" type="image/svg+xml" />
@@ -75,48 +76,85 @@
             </div>
           </div>
           <div class="col-lg-5">
-            <!-- Demo cards match Find Mates card style -->
-            <div class="hm-card hm-card--glass" aria-hidden="true">
-              <div class="d-flex align-items-center justify-content-between mb-3">
-                <span class="hm-badge hm-badge--info">Centre · Mumbai</span>
-                <span class="hm-badge hm-badge--success">12 mates</span>
-              </div>
+            <!-- Two standalone Find Mates cards (exact mateCard structure) -->
+            <div class="d-flex flex-column gap-3" aria-hidden="true">
 
-              <div class="hm-card hm-mate" style="border:none;padding:0;box-shadow:none;margin-bottom:var(--hm-space-3);">
+              <article class="hm-card hm-mate">
                 <div class="hm-mate__head">
-                  <div class="hm-avatar hm-avatar--card" style="background:#4F46E5;color:#fff;" aria-hidden="true">AR</div>
+                  <div class="hm-avatar hm-avatar--card" style="background:#4F46E5;color:#fff;">AR</div>
                   <div class="hm-mate__head-info">
                     <p class="hm-mate__name">Aarav R.</p>
                     <div class="hm-mate__badges">
-                      <span class="hm-badge hm-badge--male">♂ Male</span>
+                      <span class="hm-badge hm-badge--male"><span class="hm-gender-symbol">♂</span> Male</span>
                       <span class="hm-badge hm-badge--verified">✓ Verified</span>
                     </div>
                   </div>
                 </div>
-                <div class="hm-mate__chips" style="margin-top:var(--hm-space-2);">
-                  <span class="hm-chip">🚂 Train</span>
-                  <span class="hm-chip">🏨 Needs stay</span>
+                <div class="hm-mate__body">
+                  <div class="hm-mate__route-wrap">
+                    <div class="hm-mate__route-track">
+                      <div class="hm-mate__icon-bubble">🏠</div>
+                      <div class="hm-mate__route-connector">
+                        <div class="hm-mate__route-dot hm-mate__route-dot--top"></div>
+                        <div class="hm-mate__route-dashes"></div>
+                        <div class="hm-mate__route-dot hm-mate__route-dot--bottom"></div>
+                      </div>
+                      <div class="hm-mate__icon-bubble">📋</div>
+                    </div>
+                    <div class="hm-mate__route-info">
+                      <p class="hm-mate__home-loc"><strong>Pune</strong><span class="hm-loc-state">, Maharashtra</span></p>
+                      <div class="hm-mate__exam-info">
+                        <p class="hm-mate__centre-name">Sion Hospital, Mumbai</p>
+                        <p class="hm-mate__centre-loc">📍 Mumbai, Maharashtra</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="hm-mate__v-divider"></div>
+                  <div class="hm-mate__badge-cards">
+                    <div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">🚂</span><span class="hm-mate__badge-label">Train</span></div>
+                    <div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">🏨</span><span class="hm-mate__badge-label">Needs stay</span></div>
+                  </div>
                 </div>
-              </div>
+              </article>
 
-              <hr class="hm-divider" />
-
-              <div class="hm-card hm-mate" style="border:none;padding:0;box-shadow:none;">
+              <article class="hm-card hm-mate">
                 <div class="hm-mate__head">
-                  <div class="hm-avatar hm-avatar--card" style="background:#DB2777;color:#fff;" aria-hidden="true">PS</div>
+                  <div class="hm-avatar hm-avatar--card" style="background:#DB2777;color:#fff;">PS</div>
                   <div class="hm-mate__head-info">
                     <p class="hm-mate__name">Priya S.</p>
                     <div class="hm-mate__badges">
-                      <span class="hm-badge hm-badge--female">♀ Female</span>
+                      <span class="hm-badge hm-badge--female"><span class="hm-gender-symbol">♀</span> Female</span>
                       <span class="hm-badge hm-badge--verified">✓ Verified</span>
                     </div>
                   </div>
                 </div>
-                <div class="hm-mate__chips" style="margin-top:var(--hm-space-2);">
-                  <span class="hm-chip">🏠 Has stay</span>
-                  <span class="hm-chip">🚗 Self Drive</span>
+                <div class="hm-mate__body">
+                  <div class="hm-mate__route-wrap">
+                    <div class="hm-mate__route-track">
+                      <div class="hm-mate__icon-bubble">🏠</div>
+                      <div class="hm-mate__route-connector">
+                        <div class="hm-mate__route-dot hm-mate__route-dot--top"></div>
+                        <div class="hm-mate__route-dashes"></div>
+                        <div class="hm-mate__route-dot hm-mate__route-dot--bottom"></div>
+                      </div>
+                      <div class="hm-mate__icon-bubble">📋</div>
+                    </div>
+                    <div class="hm-mate__route-info">
+                      <p class="hm-mate__home-loc"><strong>Mumbai</strong><span class="hm-loc-state">, Maharashtra</span></p>
+                      <div class="hm-mate__exam-info">
+                        <p class="hm-mate__centre-name">Sion Hospital, Mumbai</p>
+                        <p class="hm-mate__centre-loc">📍 Mumbai, Maharashtra</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="hm-mate__v-divider"></div>
+                  <div class="hm-mate__badge-cards">
+                    <div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">🏠</span><span class="hm-mate__badge-label">Has stay</span></div>
+                    <div class="hm-mate__badge-card"><span class="hm-mate__badge-icon">🚗</span><span class="hm-mate__badge-label">Self Drive</span></div>
+                  </div>
                 </div>
-              </div>
+              </article>
+
             </div>
           </div>
         </div>
