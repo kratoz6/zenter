@@ -187,18 +187,22 @@
 }
 
 /* Badges: gender + verified */
-.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; line-height: 1; }
 .hm-badge--female { background: #f3e8ff; color: #7c3aed; border: 1px solid #ddd6fe; }
 .hm-badge--male   { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .hm-badge--verified { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
 
-/* Gender symbol (♀ ♂) has inconsistent baseline on iOS Safari.
-   Wrapping in an inline-flex span with explicit line-height normalises it. */
+/* Gender symbol (♀ ♂) sit below text baseline on iOS Safari due to the
+   mathematical Unicode block's font metrics in Apple's SF font.
+   inline-block + vertical-align:middle + top nudge is the reliable cross-
+   platform fix — inline-flex alone doesn't move the element up on iOS. */
 .hm-gender-symbol {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
+  vertical-align: middle;
   line-height: 1;
   font-style: normal;
+  position: relative;
+  top: -1px; /* compensates iOS SF-font baseline offset for ♀ ♂ */
 }
 
 /* Card hover micro-interaction — subtle lift on hover, press on active */
