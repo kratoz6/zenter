@@ -1,5 +1,30 @@
 /* HallMate — Dashboard + profile page styling. */
 
+/* ── Connections page — received requests link banner ───────────────────── */
+.hm-conn-requests-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hm-space-4) var(--hm-space-5);
+  background: var(--hm-surface);
+  border: 1px solid var(--hm-border);
+  border-radius: var(--hm-radius-lg);
+  text-decoration: none;
+  color: var(--hm-text);
+  font-weight: 600;
+  margin-bottom: var(--hm-space-5);
+  transition: background var(--hm-duration-fast) var(--hm-ease),
+              border-color var(--hm-duration-fast) var(--hm-ease);
+}
+.hm-conn-requests-link:hover {
+  background: var(--hm-surface-2);
+  border-color: var(--hm-primary);
+  text-decoration: none;
+  color: var(--hm-text);
+}
+.hm-conn-requests-link__label { display: flex; align-items: center; }
+.hm-conn-requests-link__arrow { color: var(--hm-text-muted); font-size: var(--hm-text-lg); }
+
 /* ── Connection 3-section layout ─────────────────────────────────────────── */
 .hm-conn-section { margin-bottom: var(--hm-space-7); }
 .hm-conn-section:last-child { margin-bottom: 0; }
@@ -42,6 +67,17 @@
   font-size: var(--hm-text-sm);
   font-style: italic;
   color: var(--hm-text-muted);
+}
+
+/* Tab panel entrance — fade-up when panel is revealed */
+@keyframes hm-panel-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+#hm-panel-requests:not([hidden]),
+#hm-panel-find-mates:not([hidden]),
+#hm-panel-connections:not([hidden]) {
+  animation: hm-panel-enter 180ms ease-out both;
 }
 
 /* ── Dashboard tab bar ─────────────────────────────────────────────────────── */
@@ -151,10 +187,30 @@
 }
 
 /* Badges: gender + verified */
-.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; }
+.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .hm-badge--female { background: #f3e8ff; color: #7c3aed; border: 1px solid #ddd6fe; }
 .hm-badge--male   { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .hm-badge--verified { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+/* Gender symbol (♀ ♂) has inconsistent baseline on iOS Safari.
+   Wrapping in an inline-flex span with explicit line-height normalises it. */
+.hm-gender-symbol {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  font-style: normal;
+}
+
+/* Card hover micro-interaction — subtle lift on hover, press on active */
+.hm-card--interactive {
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+  will-change: transform;
+}
+.hm-card--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--hm-shadow-md);
+}
+.hm-card--interactive:active { transform: scale(0.99); transition-duration: 60ms; }
 
 .hm-mate__footer {
   display: flex; justify-content: space-between; align-items: center;
@@ -501,6 +557,8 @@
 .hm-kv dd { margin: 0; color: var(--hm-text); font-weight: 500; }
 /* Empty-state prompts — muted + italic so they differ visually from real values. */
 .hm-kv dd.hm-kv__empty { color: var(--hm-text-subtle); font-style: italic; font-weight: 400; }
+/* Permanent identity field shown read-only during edit mode — subtle lock cue. */
+.hm-kv dd.hm-kv__locked::after { content: ' 🔒'; opacity: 0.45; font-size: 0.85em; }
 
 /* ── Inline edit mode ─────────────────────────────────────────────────────────
    When a section enters edit mode (article.is-editing), inputs replace dd text.

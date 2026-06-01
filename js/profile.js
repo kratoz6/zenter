@@ -26,7 +26,7 @@ const GENDER_OPTS = ['Male', 'Female', 'Other'];
 // Exam type is permanent per account — set once during onboarding and not
 // editable from the profile page. Kept in the DB for filtering only.
 
-const TRAVEL_OPTS = ['By train', 'By flight', 'By bus', 'Self-drive', 'Other'];
+const TRAVEL_OPTS = ['By train', 'By flight', 'By bus', 'Self-drive', 'Shared Cab', 'Other'];
 
 const STAY_OPTS = [
   'Need accommodation', 'Have accommodation', 'Looking for room share', 'Other',
@@ -43,12 +43,16 @@ const SECTIONS = {
     editBtnId: 'hm-edit-about',
     fields: [
       {
+        // Permanent identity — locked once set (enforced in DB by a trigger too).
         key: 'full_name', ddId: 'hm-kv-name', type: 'text',
         placeholder: 'Your full name', prompt: 'Add your name', required: true,
+        locked: true,
       },
       {
+        // Permanent identity — locked once set.
         key: 'gender', ddId: 'hm-kv-gender', type: 'select',
         options: GENDER_OPTS, prompt: 'Add your gender',
+        locked: true,
       },
       {
         key: 'college', ddId: 'hm-kv-college', type: 'text',
@@ -108,17 +112,26 @@ async function init() {
   // Show phone immediately (from Firebase, no Supabase latency)
   setText('hm-profile-phone', formatPhonePretty(profilePhone));
 
-  setAllLoading();
+  // Instant hydration from cache — eliminates field pop-in on repeat visits.
+  const cached = readProfileCache(profilePhone);
+  if (cached) { profileData = cached; hydrateAll(); }
+  else        { setAllLoading(); }
 
+  // Refresh from the server in the background, then re-hydrate.
   const { data, error } = await getProfileByPhone(profilePhone);
   if (error) {
-    console.error('[profile] load error', error);
-    setText('hm-profile-name', error.message || 'Could not load profile.');
-    return;
+    if (!cached) {
+      console.error('[profile] load error', error);
+      setText('hm-profile-name', error.message || 'Could not load profile.');
+      return;
+    }
+    console.warn('[profile] refresh failed — showing cached data', error);
+  } else {
+    profileData = data || {};
+    writeProfileCache(profilePhone, profileData);
+    hydrateAll();
   }
 
-  profileData = data || {};
-  hydrateAll();
   wireEditButtons();
   wireAccountActions();
 
@@ -167,6 +180,7 @@ function hydrateSection(sec) {
 function setDd(ddId, value, prompt) {
   const dd = document.getElementById(ddId);
   if (!dd) return;
+  dd.classList.remove('hm-kv__locked'); // cleared on every (re)hydrate / exit-edit
   if (value) {
     dd.textContent = value;
     dd.classList.remove('hm-kv__empty');
@@ -235,6 +249,7 @@ async function saveAll(saveBtn) {
 
   // Optimistic merge
   Object.assign(profileData, updates);
+  writeProfileCache(profilePhone, profileData); // keep cache in sync for next visit
   if ('full_name' in updates) {
     const name = trimOrNull(profileData.full_name);
     setText('hm-profile-name', name || 'Your name');
@@ -263,6 +278,13 @@ function enterEditMode(sectionKey) {
   sec.fields.forEach(f => {
     const dd = document.getElementById(f.ddId);
     if (!dd) return;
+    // Permanent identity fields (name, gender) stay read-only ONCE set — they
+    // remain as plain text instead of becoming an input. Legacy users who never
+    // set the field can still fill it in once (then the DB trigger locks it).
+    if (f.locked && trimOrNull(profileData[f.key])) {
+      dd.classList.add('hm-kv__locked');
+      return;
+    }
     // Fallback to legacy field so old users see their existing data pre-filled
     const currentVal = trimOrNull(profileData[f.key])
                     ?? (f.fallback ? trimOrNull(profileData[f.fallback]) : null)
@@ -404,6 +426,23 @@ function exitEditMode(sectionKey) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Lightweight per-tab profile cache (sessionStorage). Keyed by phone so a
+// different signed-in user never reads a stale row. Used for instant hydration.
+const PROFILE_CACHE_KEY = 'hm.profile.row';
+
+function readProfileCache(phone) {
+  try {
+    const obj = JSON.parse(sessionStorage.getItem(PROFILE_CACHE_KEY) || 'null');
+    return obj && obj.__phone === phone ? obj.data : null;
+  } catch { return null; }
+}
+
+function writeProfileCache(phone, data) {
+  try {
+    sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ __phone: phone, data }));
+  } catch { /* private mode / quota — non-fatal */ }
+}
 
 function setText(id, text) {
   const el = document.getElementById(id);

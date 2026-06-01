@@ -30,10 +30,25 @@ export function onAuthChange(fn) {
   return () => listeners.delete(fn);
 }
 
-export function whenReady() {
+// Resolves with the current user once Firebase reports auth state.
+// A safety timeout GUARANTEES this always resolves (default 8s) so the UI can
+// never deadlock on a permanent loader if onAuthStateChanged never fires
+// (Firebase cold-start failure, blocked network, ad-blockers, etc.). On timeout
+// it resolves with whatever currentUser we have — null is treated as logged-out,
+// which deterministically routes the user to login rather than hanging forever.
+export function whenReady(timeoutMs = 8000) {
   if (ready) return Promise.resolve(currentUser);
   return new Promise((resolve) => {
-    const off = onAuthChange(() => { off(); resolve(currentUser); });
+    let settled = false;
+    let off = () => {};
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      try { off(); } catch { /* ignore */ }
+      resolve(currentUser);
+    };
+    off = onAuthChange(() => finish());
+    setTimeout(finish, timeoutMs);
   });
 }
 
@@ -96,7 +111,10 @@ export async function requireAuth(redirectTo = ROUTES.login) {
 }
 
 // On the login page: skip the flow if already signed in.
+// Returns true when a redirect was triggered (caller should keep its loading
+// gate up while the browser navigates away — avoids flashing the login form).
 export async function redirectIfAuthed(redirectTo = ROUTES.dashboard) {
   const user = await whenReady();
-  if (user) window.location.replace(redirectTo);
+  if (user) { window.location.replace(redirectTo); return true; }
+  return false;
 }

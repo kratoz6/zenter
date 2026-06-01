@@ -137,7 +137,7 @@ export function getUsersByIds(ids) {
   if (!ids || ids.length === 0) return Promise.resolve({ data: [], error: null });
   return query(
     from('users')
-      .select('id, full_name, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio')
+      .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio')
       .in('id', ids)
   );
 }

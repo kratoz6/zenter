@@ -40,16 +40,22 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
 // Re-export OTP primitives so feature modules import a single surface.
 export { signInWithPhoneNumber, onAuthStateChanged, signOut };
 
-// Returns the appropriate ApplicationVerifier for the current context:
+// ApplicationVerifier — singleton pattern.
+//
+// One RecaptchaVerifier instance is created lazily on first call to
+// createRecaptcha() and reused for every subsequent signInWithPhoneNumber()
+// call in the same page session. This matches Firebase's documented
+// guidance: the verifier is designed to be reusable across multiple OTP
+// requests; the token it produces is single-use but the verifier instance
+// itself is not. Recreating per click triggers duplicate render warnings,
+// flickering badges, and occasional "already rendered" failures.
 //
 // • E2E / Playwright (window.__hm_e2e = true):
-//     No-op mock — reCAPTCHA skipped entirely, test phone OTPs accepted.
+//     No-op mock (NOT cached — tests stay isolated).
 //
-// • Production (real users):
-//     ⚠️ TEMPORARY DEBUG (2026-05-24): switched from 'invisible' → 'normal'
-//     (visible checkbox) to validate live OTP delivery. Revert to 'invisible'
-//     once recaptcha/api2/pat 401 + private-token warnings are confirmed
-//     harmless and SMS reliably reaches users on the live domain.
+// • Production: invisible reCAPTCHA, singleton.
+let verifierInstance = null;
+
 export function createRecaptcha(containerId = 'hm-recaptcha-container') {
   if (typeof window !== 'undefined' && window.__hm_e2e) {
     return {
@@ -61,14 +67,23 @@ export function createRecaptcha(containerId = 'hm-recaptcha-container') {
     };
   }
 
-  // Visible reCAPTCHA — renders an inline checkbox in #hm-recaptcha-container.
-  const verifier = new RecaptchaVerifier(auth, containerId, {
-    size: 'normal',
+  if (verifierInstance) return verifierInstance;
+
+  verifierInstance = new RecaptchaVerifier(auth, containerId, {
+    size: 'invisible',
     callback:           () => {},
-    'expired-callback': () => { console.warn('[recaptcha] expired — user must redo the check'); },
+    'expired-callback': () => { console.warn('[recaptcha] expired — verifier will refresh on next attempt'); },
     'error-callback':   (err) => { console.warn('[recaptcha] check failed', err); },
   });
-  // Ensure _reset exists — Firebase calls it internally after OTP confirmation.
-  if (typeof verifier._reset !== 'function') verifier._reset = () => {};
-  return verifier;
+
+  return verifierInstance;
+}
+
+// Tear down the cached verifier so the next createRecaptcha() returns a fresh
+// instance. Call on auth errors so a stale or rate-limited verifier doesn't
+// poison subsequent retries. Safe to call when no verifier exists.
+export function resetRecaptcha() {
+  if (!verifierInstance) return;
+  try { verifierInstance.clear(); } catch { /* defensive — clear can throw on already-disposed */ }
+  verifierInstance = null;
 }
