@@ -77,23 +77,65 @@ export async function getAdminStats() {
   };
 }
 
-/** Recent users list for the admin Users section. */
+/** Recent users list for the admin Users section — includes moderation fields. */
 export function getRecentUsers(limit = 50) {
   return query(
     from('users')
-      .select('id, full_name, gender, phone, exam_type, profile_completed, is_profile_paused, role, created_at')
+      .select('id, full_name, gender, phone, exam_type, state, district, profile_completed, is_profile_paused, account_status, role, created_at')
       .order('created_at', { ascending: false })
       .limit(limit)
   );
 }
 
-/** Recent feedback for the admin Feedback section. */
+/** Recent feedback with resolution state. */
 export function getRecentFeedbacks(limit = 50) {
   return query(
     from('feedbacks')
-      .select('id, user_name, user_id, exam_type, feedback_message, created_at')
+      .select('id, user_name, user_id, exam_type, feedback_message, is_resolved, resolved_at, created_at')
       .order('created_at', { ascending: false })
       .limit(limit)
+  );
+}
+
+// ─── Admin mutation helpers (call SECURITY DEFINER DB functions) ──────────
+// All mutations go through server-side functions that verify admin role —
+// direct anon-key writes to protected columns are blocked by a DB trigger.
+
+export function adminSetUserStatus(targetId, requesterPhone, status) {
+  return query(
+    supabase.rpc('admin_set_user_status', {
+      p_target_id:       targetId,
+      p_requester_phone: requesterPhone,
+      p_status:          status,
+    })
+  );
+}
+
+export function adminSetUserPaused(targetId, requesterPhone, paused) {
+  return query(
+    supabase.rpc('admin_set_user_paused', {
+      p_target_id:       targetId,
+      p_requester_phone: requesterPhone,
+      p_paused:          paused,
+    })
+  );
+}
+
+export function adminResolveFeedback(feedbackId, requesterPhone) {
+  return query(
+    supabase.rpc('admin_resolve_feedback', {
+      p_feedback_id:     feedbackId,
+      p_requester_phone: requesterPhone,
+    })
+  );
+}
+
+export function adminDeleteFeedback(feedbackId, requesterPhone) {
+  return query(
+    supabase.rpc('admin_delete_feedback', {
+      p_feedback_id:     feedbackId,
+      p_requester_phone: requesterPhone,
+    })
   );
 }
 
@@ -138,7 +180,9 @@ export function getAllUsers(examType = 'NEET UG') {
   let q = from('users')
     .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, created_at')
     .eq('profile_completed', true)
-    .or('is_profile_paused.is.null,is_profile_paused.eq.false');
+    .or('is_profile_paused.is.null,is_profile_paused.eq.false')
+    // Exclude admin-suspended and admin-banned users from the public feed
+    .or('account_status.is.null,account_status.eq.active');
 
   if (!examType || examType === 'NEET UG') {
     // Include legacy null-exam_type rows alongside explicit NEET UG rows.

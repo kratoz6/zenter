@@ -83,7 +83,13 @@
         <!-- Users -->
         <section class="adm-panel" id="adm-panel-users" data-route="users">
           <h1 class="adm-h1">Users</h1>
-          <p class="adm-sub">Recent signups across all exam ecosystems.</p>
+          <p class="adm-sub">Search, filter, and manage all registered users.</p>
+          <div class="adm-toolbar">
+            <input type="search" id="adm-user-search" class="adm-search" placeholder="Search by name or phone…" />
+            <select id="adm-user-filter-exam"   class="adm-filter"><option value="">All exams</option><option value="NEET UG">NEET UG</option><option value="NEET PG">NEET PG</option><option value="INICET">INICET</option></select>
+            <select id="adm-user-filter-gender" class="adm-filter"><option value="">All genders</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
+            <select id="adm-user-filter-status" class="adm-filter"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="banned">Banned</option></select>
+          </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
           </div>
@@ -92,7 +98,11 @@
         <!-- Feedback -->
         <section class="adm-panel" id="adm-panel-feedback" data-route="feedback">
           <h1 class="adm-h1">Feedback</h1>
-          <p class="adm-sub">Messages submitted via the in-app Feedback modal.</p>
+          <p class="adm-sub">In-app feedback submissions — resolve or remove spam.</p>
+          <div class="adm-toolbar">
+            <input type="search" id="adm-fb-search" class="adm-search" placeholder="Search feedback…" />
+            <select id="adm-fb-filter-status" class="adm-filter"><option value="">All</option><option value="pending">Pending</option><option value="resolved">Resolved</option></select>
+          </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-feedback-list"><div class="adm-empty">Loading…</div></div>
           </div>
@@ -144,6 +154,21 @@
     </main>
 
   </div>
+
+  <!-- Confirmation dialog (reused for all destructive actions) -->
+  <div id="adm-confirm-overlay" class="adm-overlay" hidden>
+    <div class="adm-dialog">
+      <h4 id="adm-confirm-title">Confirm action</h4>
+      <p id="adm-confirm-msg">Are you sure?</p>
+      <div class="adm-dialog__actions">
+        <button type="button" class="adm-btn adm-btn--ghost" id="adm-confirm-cancel">Cancel</button>
+        <button type="button" class="adm-btn adm-btn--danger" id="adm-confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="adm-toast" class="adm-toast is-hidden" aria-live="polite"></div>
 
   <script type="module" src="/js/admin.js"></script>
 </body>
