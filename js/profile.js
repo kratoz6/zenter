@@ -27,10 +27,20 @@ const GENDER_OPTS = ['Male', 'Female', 'Other'];
 // editable from the profile page. Kept in the DB for filtering only.
 
 const TRAVEL_OPTS = ['By train', 'By flight', 'By bus', 'Self-drive', 'Shared Cab', 'Other'];
+const TRAVEL_DISPLAY = {
+  'By train': '🚂 Train', 'By flight': '✈️ Flight', 'By bus': '🚌 Bus',
+  'Self-drive': '🚗 Self Drive', 'Shared Cab': '🚕 Shared Cab', 'Other': '🚐 Yet to Decide',
+};
 
 const STAY_OPTS = [
   'Need accommodation', 'Have accommodation', 'Looking for room share', 'Other',
 ];
+const STAY_DISPLAY = {
+  'Need accommodation': '🏨 Need accommodation',
+  'Have accommodation': '🏠 Have accommodation',
+  'Looking for room share': '🛏️ Room share',
+  'Other': '🏡 Yet to Decide',
+};
 
 // ─── Section configs ──────────────────────────────────────────────────────────
 // key         → matches Object.entries() key used to wire buttons
@@ -331,9 +341,14 @@ function buildInput(field, currentVal) {
     blank.value = ''; blank.textContent = 'Select…';
     blank.selected = !currentVal;
     el.appendChild(blank);
+    // Use pretty display labels for travel/stay options
+    const displayMap = field.key === 'travel_mode' ? TRAVEL_DISPLAY
+                     : field.key === 'stay_plan'   ? STAY_DISPLAY
+                     : null;
     (field.options || []).forEach(opt => {
       const o = document.createElement('option');
-      o.value = o.textContent = opt;
+      o.value = opt;
+      o.textContent = displayMap?.[opt] ?? opt;
       o.selected = (opt === currentVal);
       el.appendChild(o);
     });

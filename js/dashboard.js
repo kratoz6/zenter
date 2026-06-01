@@ -952,7 +952,7 @@ const STAY_LABEL = {
   'Need accommodation':     'Needs stay',
   'Have accommodation':     'Has stay',
   'Looking for room share': 'Room share',
-  'Other':                  'Other',
+  'Other':                  'Yet to Decide',
 };
 
 document.addEventListener('DOMContentLoaded', init);

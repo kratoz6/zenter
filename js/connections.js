@@ -319,7 +319,7 @@ const STAY_ICON = {
 };
 const STAY_LABEL = {
   'Need accommodation':     'Needs stay', 'Have accommodation': 'Has stay',
-  'Looking for room share': 'Room share', 'Other':              'Other',
+  'Looking for room share': 'Room share', 'Other':              'Yet to Decide',
 };
 
 function esc(str) {
