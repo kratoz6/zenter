@@ -27,8 +27,15 @@ async function init() {
   } catch { /* sessionStorage unavailable in some private-mode browsers */ }
 
   // ASYNC PATH — Firebase confirms the session (covers cold-start / no-cache).
-  // For logged-out users the form is already visible by the time this resolves.
-  redirectIfAuthed(); // fire-and-forget
+  // If there's any cached auth user (even without profileCompleted), hide the
+  // form while Firebase resolves to avoid a flash of the login UI before redirect.
+  const card = document.querySelector('.hm-auth__card');
+  try {
+    if (sessionStorage.getItem(STORAGE_KEYS.authUser) && card) card.hidden = true;
+  } catch {}
+
+  const redirected = await redirectIfAuthed();
+  if (!redirected && card) card.hidden = false; // not logged in — show the form
 
   document.getElementById('hm-form-phone').addEventListener('submit', (e) => {
     e.preventDefault();

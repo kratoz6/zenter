@@ -51,7 +51,7 @@
           <span class="hm-eyebrow" id="hm-exam-label">NEET UG</span>
           <h1 style="margin-top: 12px;">Find centre mates</h1>
           <p class="hm-text-muted">
-            Aspirants going to the same exam centre district as you.
+            Aspirants going to the same exam centre state as you for easy matching.
             <span id="hm-results-count" class="hm-results-count"></span>
           </p>
         </div>
@@ -75,6 +75,11 @@
               </div>
 
               <div class="hm-field">
+                <label class="hm-label" for="hm-filter-district">Exam district</label>
+                <input class="hm-input" id="hm-filter-district" type="text" placeholder="Search district…" autocomplete="off" />
+              </div>
+
+              <div class="hm-field">
                 <label class="hm-label" for="hm-filter-gender">Gender</label>
                 <select class="hm-select" id="hm-filter-gender">
                   <option value="">Any</option>
@@ -83,39 +88,36 @@
                   <option value="Other">Other</option>
                 </select>
               </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-travel">Travel mode</label>
+                <select class="hm-select" id="hm-filter-travel">
+                  <option value="">All travel modes</option>
+                  <option value="By train">🚆 Train</option>
+                  <option value="By flight">✈️ Flight</option>
+                  <option value="By bus">🚌 Bus</option>
+                  <option value="Self-drive">🚗 Self Drive</option>
+                  <option value="Shared Cab">🚕 Shared Cab</option>
+                  <option value="Other">🚐 Yet to Decide</option>
+                </select>
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-stay">Stay plan</label>
+                <select class="hm-select" id="hm-filter-stay">
+                  <option value="">All stay plans</option>
+                  <option value="Need accommodation">🏨 Needs stay</option>
+                  <option value="Have accommodation">🏠 Has stay</option>
+                  <option value="Looking for room share">🛏️ Room share</option>
+                  <option value="Other">🏡 Yet to Decide</option>
+                </select>
+              </div>
             </div>
           </div>
         </aside>
 
         <!-- MATE FEED -->
         <section aria-label="Centre mate list" aria-live="polite">
-
-          <!-- Quick filters: Travel mode + Stay plan (client-side only) -->
-          <div class="row g-2 mb-3">
-            <div class="col-12 col-md-6">
-              <label class="hm-label" for="hm-filter-travel">Travel mode</label>
-              <select class="hm-select" id="hm-filter-travel">
-                <option value="">All travel modes</option>
-                <option value="By train">🚆 Train</option>
-                <option value="By flight">✈️ Flight</option>
-                <option value="By bus">🚌 Bus</option>
-                <option value="Self-drive">🚗 Self Drive</option>
-                <option value="Shared Cab">🚕 Shared Cab</option>
-                <option value="Other">🚐 Yet to Decide</option>
-              </select>
-            </div>
-            <div class="col-12 col-md-6">
-              <label class="hm-label" for="hm-filter-stay">Stay plan</label>
-              <select class="hm-select" id="hm-filter-stay">
-                <option value="">All stay plans</option>
-                <option value="Need accommodation">🏨 Needs stay</option>
-                <option value="Have accommodation">🏠 Has stay</option>
-                <option value="Looking for room share">🛏️ Room share</option>
-                <option value="Other">🏡 Yet to Decide</option>
-              </select>
-            </div>
-          </div>
-
           <div class="hm-grid-cards" id="hm-mates-grid"></div>
         </section>
 
