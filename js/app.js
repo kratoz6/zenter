@@ -276,11 +276,13 @@ async function loadAnnouncementBar(route) {
     bar.className = 'hm-announcement-bar';
     bar.setAttribute('role', 'marquee');
     bar.setAttribute('aria-label', 'Announcements');
-    // Duplicate text so the loop is seamless (animation moves -50%)
+    // Each span includes a trailing separator so the loop join is seamless —
+    // the gap between repetitions is just the "   ·   " characters, not padding.
+    const unit = `📢 ${safe}   ·   `;
     bar.innerHTML = `
       <div class="hm-announcement-bar__ticker">
-        <span class="hm-announcement-bar__text">📢 ${safe}</span>
-        <span class="hm-announcement-bar__text" aria-hidden="true">📢 ${safe}</span>
+        <span class="hm-announcement-bar__text">${unit}</span>
+        <span class="hm-announcement-bar__text" aria-hidden="true">${unit}</span>
       </div>`;
 
     // Insert immediately after the navbar
