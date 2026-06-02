@@ -638,7 +638,7 @@ function renderEmpty(isFiltered) {
       <p class="hm-text-muted">
         ${isFiltered
           ? 'No centre mates match the selected filters. Try widening your search.'
-          : 'Be the first to join your exam centre.'}
+          : 'Be the first aspirant from your exam centre on Zenter.'}
       </p>
       ${isFiltered ? `<button class="hm-btn hm-btn--ghost hm-btn--sm" onclick="document.getElementById('hm-filter-clear').click()">Clear filters</button>` : ''}
     </div>`);
