@@ -13,6 +13,7 @@ import { populateStateSelect, wireDistrictCascade, DISTRICTS_BY_STATE } from './
 const { REL } = Relationships;
 
 let allUsers        = [];
+let rawUserMap      = new Map(); // all fetched users keyed by id — used by renderRequests()
 let displayedUsers  = [];
 let lastFocusedCard = null;
 let modalUser       = null;
@@ -145,6 +146,11 @@ async function loadData() {
   if (usersRes.error) { renderError(usersRes.error.message); return; }
 
   Relationships.hydrate(connsRes.data || [], myUserId);
+
+  // Raw map of ALL returned users (unfiltered) — used by renderRequests() so
+  // incoming request senders are never silently dropped due to state/block filters.
+  rawUserMap = new Map((usersRes.data || []).map(u => [u.id, u]));
+
   allUsers = (usersRes.data || []).filter((u) => {
     if (u.id === myUserId) return false;
     if (blockedUserIds.has(u.id)) return false; // users I blocked
@@ -472,11 +478,13 @@ function renderRequests() {
   const grid = document.getElementById('hm-requests-grid');
   if (!grid) return;
 
-  const pending   = Relationships.getIncomingPending();
-  const userById  = new Map(allUsers.map((u) => [u.id, u]));
-  const items     = pending
+  const pending = Relationships.getIncomingPending();
+  // Use rawUserMap (all server-returned users) not allUsers (filtered feed).
+  // This ensures request senders are always shown even if they were filtered
+  // out of find-mates by exam state, blocked-by, or any other rule.
+  const items = pending
     .map(({ userId, connectionId }) => {
-      const u = userById.get(userId);
+      const u = rawUserMap.get(userId);
       return u ? { user: u, connectionId } : null;
     })
     .filter(Boolean);
