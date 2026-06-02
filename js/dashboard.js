@@ -18,15 +18,15 @@ let lastFocusedCard = null;
 let modalUser       = null;
 let myUserId              = null;
 let myExamType            = null;   // permanent — set during onboarding
-let myExamCentreDistrict  = null;   // district-level matching boundary
+let myExamCentreState     = null;   // state-level matching boundary
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
 let blockedUserIds  = new Set(); // blocked_user_id values for the current user
 let dataLoaded      = false;     // true once loadData() has hydrated — gates empty states
 
 const FILTERS = [
-  // State/district filters removed — district-level matching is now enforced on load.
-  // Remaining filters let users narrow within their district.
+  // State/district filters removed — state-level matching is enforced on load.
+  // Remaining filters let users narrow within their state.
   { id: 'hm-filter-center',  key: 'exam_center',  type: 'text'   },
   { id: 'hm-filter-gender',  key: 'gender',       type: 'select' },
   { id: 'hm-filter-travel',  key: 'travel_mode',  type: 'select' },
@@ -51,8 +51,8 @@ async function init() {
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
   myUserId             = me?.id        || null;
   myExamType           = me?.exam_type || 'NEET UG';
-  // District-level boundary: exam centre district if set, else home district
-  myExamCentreDistrict = me?.exam_centre_district || me?.district || null;
+  // State-level boundary: exam centre state if set, else home state
+  myExamCentreState = me?.exam_centre_state || me?.state || null;
 
   // Cache role so the navbar admin link can show/hide without an extra fetch
   try { sessionStorage.setItem('hm.user.role', me?.role || 'user'); } catch {}
@@ -102,11 +102,11 @@ async function loadData() {
   allUsers = (usersRes.data || []).filter((u) => {
     if (u.id === myUserId) return false;
     if (blockedUserIds.has(u.id)) return false;
-    // District-level visibility: only show users whose exam centre district matches.
-    // Fallback: if the other user has no exam_centre_district, use their home district.
-    if (myExamCentreDistrict) {
-      const uDistrict = u.exam_centre_district || u.district;
-      if (uDistrict !== myExamCentreDistrict) return false;
+    // State-level visibility: only show users whose exam centre state matches.
+    // Fallback: if the other user has no exam_centre_state, use their home state.
+    if (myExamCentreState) {
+      const uState = u.exam_centre_state || u.state;
+      if (uState !== myExamCentreState) return false;
     }
     return true;
   });
@@ -637,8 +637,8 @@ function renderEmpty(isFiltered) {
       <h3>${isFiltered ? 'No centre mates found' : 'No mates yet'}</h3>
       <p class="hm-text-muted">
         ${isFiltered
-          ? 'No aspirants in your exam centre district match the filters.'
-          : 'Be the first aspirant from your exam centre district on Zenter.'}
+          ? 'No aspirants in your exam centre state match the filters.'
+          : 'Be the first aspirant from your exam centre state on Zenter.'}
       </p>
       ${isFiltered ? `<button class="hm-btn hm-btn--ghost hm-btn--sm" onclick="document.getElementById('hm-filter-clear').click()">Clear filters</button>` : ''}
     </div>`);
