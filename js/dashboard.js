@@ -3,34 +3,37 @@
 import { requireOnboarded } from './auth.js';
 import { getAllUsers, getUserByPhone, getMyConnections,
          sendConnectionRequest, respondToRequest, deleteRequest,
-         getBlockedUserIds, blockUser,
+         getBlockedUserIds, getBlockedByIds, blockUser,
          deleteConnectionsBetween } from './supabase.js';
 import { debounce } from './utils.js';
 import { toast, setButtonBusy } from './ui.js';
 import * as Relationships from './relationships.js';
-import { populateStateSelect, wireDistrictCascade } from './location-data.js';
+import { populateStateSelect, wireDistrictCascade, DISTRICTS_BY_STATE } from './location-data.js';
 
 const { REL } = Relationships;
 
 let allUsers        = [];
+let rawUserMap      = new Map(); // all fetched users keyed by id — used by renderRequests()
 let displayedUsers  = [];
 let lastFocusedCard = null;
 let modalUser       = null;
-let myUserId        = null;
-let myExamType      = null;   // permanent — set during onboarding
+let myUserId              = null;
+let myExamType            = null;   // permanent — set during onboarding
+let myExamCentreState     = null;   // state-level matching boundary
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
-let blockedUserIds  = new Set(); // blocked_user_id values for the current user
+let blockedUserIds  = new Set(); // users the current user has blocked
+let blockedByIds    = new Set(); // users who have blocked the current user
 let dataLoaded      = false;     // true once loadData() has hydrated — gates empty states
 
 const FILTERS = [
-  // fallback: old users who predate exam_centre_* columns still match via state/district
-  { id: 'hm-filter-exam-state',    key: 'exam_centre_state',    fallback: 'state',    type: 'select' },
-  { id: 'hm-filter-exam-district', key: 'exam_centre_district', fallback: 'district', type: 'select' },
-  { id: 'hm-filter-center',        key: 'exam_center',                                type: 'text'   },
-  { id: 'hm-filter-gender',        key: 'gender',                                     type: 'select' },
-  { id: 'hm-filter-travel',        key: 'travel_mode',                                type: 'select' },
-  { id: 'hm-filter-stay',          key: 'stay_plan',                                  type: 'select' },
+  // State/district filters removed — state-level matching is enforced on load.
+  // Remaining filters let users narrow within their state.
+  { id: 'hm-filter-gender',   key: 'gender',               type: 'select' },
+  { id: 'hm-filter-travel',   key: 'travel_mode',          type: 'select' },
+  { id: 'hm-filter-stay',     key: 'stay_plan',            type: 'select' },
+  { id: 'hm-filter-district', key: 'exam_centre_district', type: 'select' },
+  { id: 'hm-filter-center',   key: 'exam_center',          type: 'text'   },
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
@@ -49,8 +52,38 @@ async function init() {
   wireTabs();
 
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
-  myUserId   = me?.id        || null;
-  myExamType = me?.exam_type || 'NEET UG'; // legacy users (null) treated as NEET UG
+  myUserId             = me?.id        || null;
+  myExamType           = me?.exam_type || 'NEET UG';
+  // Match only on exam_centre_state — where the exam is held.
+  // Home location (state/district) is irrelevant for matching.
+  // Admins/superadmins bypass the filter so they can see all users.
+  const myRole = me?.role || 'user';
+  myExamCentreState = (myRole === 'admin' || myRole === 'superadmin')
+    ? null
+    : (me?.exam_centre_state || null);
+
+  // Populate the district filter dropdown with districts from the user's exam state.
+  // Admin has no state boundary so show all districts (sorted A-Z).
+  const districtEl = document.getElementById('hm-filter-district');
+  if (districtEl) {
+    const stateForDistricts = me?.exam_centre_state || null;
+    const districts = stateForDistricts
+      ? (DISTRICTS_BY_STATE[stateForDistricts] || [])
+      : Object.values(DISTRICTS_BY_STATE).flat().sort();
+    districts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      districtEl.appendChild(opt);
+    });
+  }
+
+  // Cache role so the navbar admin link can show/hide without an extra fetch.
+  // Also update the DOM directly — renderNavAuthState() in app.js fires before
+  // this fetch completes on a fresh login, so the link stays hidden without this.
+  try { sessionStorage.setItem('hm.user.role', me?.role || 'user'); } catch {}
+  const isAdmin = myRole === 'admin' || myRole === 'superadmin';
+  const adminNavItem = document.getElementById('hm-admin-nav-item');
+  if (adminNavItem) adminNavItem.hidden = !isAdmin;
 
   // Non-NEET UG exam types → maintenance page (product focus is NEET UG).
   if (myExamType !== 'NEET UG') {
@@ -62,10 +95,14 @@ async function init() {
   const examLabel = document.getElementById('hm-exam-label');
   if (examLabel) examLabel.textContent = myExamType;
 
-  // Load blocked-user IDs up front so filtering is instant throughout the session.
+  // Load both block directions so neither side sees the other while blocked.
   if (myUserId) {
-    const { data: blocked } = await getBlockedUserIds(myUserId);
-    blockedUserIds = new Set((blocked || []).map(b => b.blocked_user_id));
+    const [blockedRes, blockedByRes] = await Promise.all([
+      getBlockedUserIds(myUserId),  // users I blocked
+      getBlockedByIds(myUserId),    // users who blocked me
+    ]);
+    blockedUserIds = new Set((blockedRes.data  || []).map(b => b.blocked_user_id));
+    blockedByIds   = new Set((blockedByRes.data || []).map(b => b.blocker_user_id));
   }
 
   wireFilters();
@@ -86,6 +123,21 @@ async function init() {
 
 async function loadData() {
   renderSkeletons();
+
+  // If the user just came from unblocking someone, re-fetch the blocked-IDs set
+  // before loading so the unblocked user definitely passes the filter.
+  try {
+    if (sessionStorage.getItem('hm.unblocked') && myUserId) {
+      sessionStorage.removeItem('hm.unblocked');
+      const [blockedRes, blockedByRes] = await Promise.all([
+        getBlockedUserIds(myUserId),
+        getBlockedByIds(myUserId),
+      ]);
+      blockedUserIds = new Set((blockedRes.data  || []).map(b => b.blocked_user_id));
+      blockedByIds   = new Set((blockedByRes.data || []).map(b => b.blocker_user_id));
+    }
+  } catch {}
+
   const [usersRes, connsRes] = await Promise.all([
     getAllUsers(myExamType),
     myUserId ? getMyConnections(myUserId) : Promise.resolve({ data: [], error: null }),
@@ -94,9 +146,23 @@ async function loadData() {
   if (usersRes.error) { renderError(usersRes.error.message); return; }
 
   Relationships.hydrate(connsRes.data || [], myUserId);
-  allUsers = (usersRes.data || []).filter(
-    (u) => u.id !== myUserId && !blockedUserIds.has(u.id)
-  );
+
+  // Raw map of ALL returned users (unfiltered) — used by renderRequests() so
+  // incoming request senders are never silently dropped due to state/block filters.
+  rawUserMap = new Map((usersRes.data || []).map(u => [u.id, u]));
+
+  allUsers = (usersRes.data || []).filter((u) => {
+    if (u.id === myUserId) return false;
+    if (blockedUserIds.has(u.id)) return false; // users I blocked
+    if (blockedByIds.has(u.id))   return false; // users who blocked me
+    // Exam-centre-state matching: only show users going to the same exam state.
+    // Home location is irrelevant — two users from different cities still match
+    // as long as their exam centre is in the same state.
+    if (myExamCentreState) {
+      if (u.exam_centre_state !== myExamCentreState) return false;
+    }
+    return true;
+  });
 
   dataLoaded = true; // gate empty states until real data is present
   renderRequests();
@@ -226,16 +292,7 @@ function wireFilters() {
       ?.addEventListener(type === 'text' ? 'input' : 'change', debouncedApply);
   });
 
-  // Populate exam centre state dropdown and wire district cascade
-  const stateEl    = document.getElementById('hm-filter-exam-state');
-  const districtEl = document.getElementById('hm-filter-exam-district');
-  if (stateEl && districtEl) {
-    populateStateSelect(stateEl, { defaultLabel: 'All states' });
-    wireDistrictCascade(stateEl, districtEl, {
-      filterMode:   true,
-      noStateLabel: 'All districts',
-    });
-  }
+  // State/district dropdowns removed — district matching is enforced at load time.
 
   document.getElementById('hm-filter-clear')?.addEventListener('click', clearFilters);
 
@@ -248,7 +305,6 @@ function wireFilters() {
 function clearFilters() {
   FILTERS.forEach(({ id }) => { const el = document.getElementById(id); if (el) el.value = ''; });
   // Trigger cascade so district options reset to "All districts" when state is cleared
-  document.getElementById('hm-filter-exam-state')?.dispatchEvent(new Event('change'));
   applyFilters();
 }
 
@@ -338,6 +394,7 @@ async function doAccept(userId, connId) {
   connectionsLoaded = false; // Connections tab re-fetches to include new contact
   notifyConnectionsChanged();
   toast('Connected! You can now reveal their contact.', { variant: 'success' });
+  showSafetyConsent();
 
   // Auto-navigate to the Connections tab so the user immediately sees the
   // new contact. Works whether the accept came from a Requests card or
@@ -361,6 +418,17 @@ async function doWithdraw(userId, connId) {
   connectionsLoaded = false;
   notifyConnectionsChanged();
   toast('Request cancelled.', { variant: 'info' });
+}
+
+// ─── Safety consent dialog ────────────────────────────────────────────────────
+// Shown after phone reveal AND after accepting a connection request.
+function showSafetyConsent() {
+  const overlay = document.getElementById('hm-safety-dialog');
+  if (!overlay) return;
+  overlay.classList.add('is-open');
+  document.getElementById('hm-safety-agree')?.addEventListener('click', () => {
+    overlay.classList.remove('is-open');
+  }, { once: true });
 }
 
 function doReveal() {
@@ -409,11 +477,13 @@ function renderRequests() {
   const grid = document.getElementById('hm-requests-grid');
   if (!grid) return;
 
-  const pending   = Relationships.getIncomingPending();
-  const userById  = new Map(allUsers.map((u) => [u.id, u]));
-  const items     = pending
+  const pending = Relationships.getIncomingPending();
+  // Use rawUserMap (all server-returned users) not allUsers (filtered feed).
+  // This ensures request senders are always shown even if they were filtered
+  // out of find-mates by exam state, blocked-by, or any other rule.
+  const items = pending
     .map(({ userId, connectionId }) => {
-      const u = userById.get(userId);
+      const u = rawUserMap.get(userId);
       return u ? { user: u, connectionId } : null;
     })
     .filter(Boolean);
@@ -634,8 +704,8 @@ function renderEmpty(isFiltered) {
       <h3>${isFiltered ? 'No centre mates found' : 'No mates yet'}</h3>
       <p class="hm-text-muted">
         ${isFiltered
-          ? 'No centre mates match the selected filters. Try widening your search.'
-          : 'Be the first to join your exam centre.'}
+          ? 'No aspirants in your exam centre state match the filters.'
+          : 'Be the first aspirant from your exam centre state on Zenter.'}
       </p>
       ${isFiltered ? `<button class="hm-btn hm-btn--ghost hm-btn--sm" onclick="document.getElementById('hm-filter-clear').click()">Clear filters</button>` : ''}
     </div>`);
@@ -956,3 +1026,21 @@ const STAY_LABEL = {
 };
 
 document.addEventListener('DOMContentLoaded', init);
+
+// bfcache fix: when the user navigates back from another page (e.g. unblocking
+// from blocked-users.html), the browser may restore this page from the
+// back/forward cache with frozen JS state. Detect this and re-fetch blocked IDs
+// + user data so newly-unblocked users appear immediately in the feed.
+window.addEventListener('pageshow', async (e) => {
+  if (!e.persisted) return; // normal load — init() already ran
+  if (!myUserId) return;
+  // Re-fetch both block directions with latest state
+  const { getBlockedUserIds: fetchBlocked, getBlockedByIds: fetchBlockedBy } = await import('./supabase.js');
+  const [blockedRes, blockedByRes] = await Promise.all([
+    fetchBlocked(myUserId),
+    fetchBlockedBy(myUserId),
+  ]);
+  blockedUserIds = new Set((blockedRes.data  || []).map(b => b.blocked_user_id));
+  blockedByIds   = new Set((blockedByRes.data || []).map(b => b.blocker_user_id));
+  await loadData();
+});

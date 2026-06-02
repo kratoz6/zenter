@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#FF6B35" />
-  <title>Find centre mates — Zenter</title>
+  <title>Find centre mates - Zenter</title>
   <meta name="description" content="Discover NEET UG students assigned to your exam centre and connect with them." />
   <meta name="robots" content="noindex, nofollow" />
   <link rel="canonical" href="https://zenter.in/dashboard.html" />
@@ -51,7 +51,7 @@
           <span class="hm-eyebrow" id="hm-exam-label">NEET UG</span>
           <h1 style="margin-top: 12px;">Find centre mates</h1>
           <p class="hm-text-muted">
-            Students registered at the same exam centre.
+            Aspirants going to the same exam centre state as you for easy matching.
             <span id="hm-results-count" class="hm-results-count"></span>
           </p>
         </div>
@@ -70,25 +70,6 @@
 
             <div class="hm-sidebar__fields">
               <div class="hm-field">
-                <label class="hm-label" for="hm-filter-exam-state">Exam centre state</label>
-                <select class="hm-select" id="hm-filter-exam-state">
-                  <option value="">All states</option>
-                </select>
-              </div>
-
-              <div class="hm-field">
-                <label class="hm-label" for="hm-filter-exam-district">Exam centre district</label>
-                <select class="hm-select" id="hm-filter-exam-district">
-                  <option value="">All districts</option>
-                </select>
-              </div>
-
-              <div class="hm-field">
-                <label class="hm-label" for="hm-filter-center">Exam centre</label>
-                <input class="hm-input" id="hm-filter-center" type="text" placeholder="Search centre…" autocomplete="off" />
-              </div>
-
-              <div class="hm-field">
                 <label class="hm-label" for="hm-filter-gender">Gender</label>
                 <select class="hm-select" id="hm-filter-gender">
                   <option value="">Any</option>
@@ -97,39 +78,48 @@
                   <option value="Other">Other</option>
                 </select>
               </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-travel">Travel mode</label>
+                <select class="hm-select" id="hm-filter-travel">
+                  <option value="">All travel modes</option>
+                  <option value="By train">🚆 Train</option>
+                  <option value="By flight">✈️ Flight</option>
+                  <option value="By bus">🚌 Bus</option>
+                  <option value="Self-drive">🚗 Self Drive</option>
+                  <option value="Shared Cab">🚕 Shared Cab</option>
+                  <option value="Other">Yet to Decide</option>
+                </select>
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-stay">Stay plan</label>
+                <select class="hm-select" id="hm-filter-stay">
+                  <option value="">All stay plans</option>
+                  <option value="Need accommodation">🏨 Needs stay</option>
+                  <option value="Have accommodation">🏠 Has stay</option>
+                  <option value="Looking for room share">🛏️ Room share</option>
+                  <option value="Other">Yet to Decide</option>
+                </select>
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-district">Exam district</label>
+                <select class="hm-select" id="hm-filter-district">
+                  <option value="">All districts</option>
+                </select>
+              </div>
+
+              <div class="hm-field">
+                <label class="hm-label" for="hm-filter-center">Exam centre</label>
+                <input class="hm-input" id="hm-filter-center" type="text" placeholder="Search centre…" autocomplete="off" />
+              </div>
             </div>
           </div>
         </aside>
 
         <!-- MATE FEED -->
         <section aria-label="Centre mate list" aria-live="polite">
-
-          <!-- Quick filters: Travel mode + Stay plan (client-side only) -->
-          <div class="row g-2 mb-3">
-            <div class="col-12 col-md-6">
-              <label class="hm-label" for="hm-filter-travel">Travel mode</label>
-              <select class="hm-select" id="hm-filter-travel">
-                <option value="">All travel modes</option>
-                <option value="By train">🚆 Train</option>
-                <option value="By flight">✈️ Flight</option>
-                <option value="By bus">🚌 Bus</option>
-                <option value="Self-drive">🚗 Self Drive</option>
-                <option value="Shared Cab">🚕 Shared Cab</option>
-                <option value="Other">🚐 Yet to Decide</option>
-              </select>
-            </div>
-            <div class="col-12 col-md-6">
-              <label class="hm-label" for="hm-filter-stay">Stay plan</label>
-              <select class="hm-select" id="hm-filter-stay">
-                <option value="">All stay plans</option>
-                <option value="Need accommodation">🏨 Needs stay</option>
-                <option value="Have accommodation">🏠 Has stay</option>
-                <option value="Looking for room share">🛏️ Room share</option>
-                <option value="Other">🏡 Yet to Decide</option>
-              </select>
-            </div>
-          </div>
-
           <div class="hm-grid-cards" id="hm-mates-grid"></div>
         </section>
 
@@ -234,6 +224,29 @@
           Submit &amp; Block
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Safety consent dialog — shown after phone reveal and after accepting a request -->
+  <div id="hm-safety-dialog" class="hm-modal-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="hm-safety-dialog-title" style="z-index:1060;">
+    <div class="hm-modal" style="max-width:420px;padding:var(--hm-space-6);">
+      <div style="font-size:2rem;text-align:center;margin-bottom:var(--hm-space-3);">🛡️</div>
+      <h3 id="hm-safety-dialog-title"
+          style="margin:0 0 var(--hm-space-3);text-align:center;font-size:var(--hm-text-lg);">
+        Safety Reminder
+      </h3>
+      <p style="margin:0 0 var(--hm-space-5);color:var(--hm-text-muted);font-size:var(--hm-text-sm);line-height:1.65;text-align:center;">
+        In view of individual safety concerns, before travelling or staying together
+        with a random person, kindly verify the other mate with their Hall ticket and
+        ID proof.
+        <br><br>
+        All the best for your exams. You will do good too 💐
+      </p>
+      <button type="button" class="hm-btn hm-btn--primary" id="hm-safety-agree"
+              style="width:100%;">
+        I Agree
+      </button>
     </div>
   </div>
 

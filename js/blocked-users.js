@@ -2,7 +2,7 @@
 
 import { requireOnboarded }                   from './auth.js';
 import { getBlockedList, getUsersByIds,
-         unblockUser }                         from './supabase.js';
+         unblockUser, deleteConnectionsBetween } from './supabase.js';
 import { setButtonBusy, toast }                from './ui.js';
 
 let myUserId   = null;
@@ -83,6 +83,11 @@ async function loadBlocked() {
         setButtonBusy(btn, false);
         return;
       }
+      // Clean up any stale connection rows (e.g. a request the blocked user
+      // sent while blocked). This gives both users a clean slate so they can
+      // send fresh requests after unblocking.
+      await deleteConnectionsBetween(myUserId, blockedId).catch(() => {});
+
       // Remove row from UI
       btn.closest('.hm-blocked-item')?.remove();
       // If list is now empty show empty state
@@ -94,7 +99,12 @@ async function loadBlocked() {
             <p class="hm-text-muted">You haven't blocked anyone.</p>
           </div>`;
       }
-      toast('User unblocked — they\'ll appear in Find Mates again.', { variant: 'success' });
+      // Mark that an unblock happened so dashboard.js re-fetches on next load
+      try { sessionStorage.setItem('hm.unblocked', '1'); } catch {}
+      toast('User unblocked — taking you to Find Mates.', { variant: 'success' });
+      // Force a fresh dashboard load after a short delay so the unblocked user
+      // is guaranteed to appear (eliminates any bfcache or stale-state issue).
+      setTimeout(() => { window.location.href = '/dashboard.html'; }, 1200);
     });
   });
 }
