@@ -23,8 +23,15 @@ let platformConfig = {};   // { feature_toggles:{}, exam_config:[], global_maint
   document.getElementById('adm-gate')?.classList.add('is-hidden');
   setTimeout(() => document.getElementById('adm-gate')?.remove(), 400);
 
-  document.getElementById('adm-user-phone').textContent = formatPhonePretty(adminPhone) || adminPhone;
-  document.getElementById('adm-user-avatar').textContent = (adminPhone.slice(-2) || 'A').toUpperCase();
+  // Fetch admin name for the topbar — show name instead of phone
+  const { getProfileByPhone } = await import('./supabase.js');
+  const { data: me } = await getProfileByPhone(adminPhone);
+  const adminName = (me?.full_name || '').trim();
+  const initials  = adminName
+    ? adminName.split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase()
+    : (adminPhone.slice(-2) || 'A').toUpperCase();
+  document.getElementById('adm-user-phone').textContent  = adminName || 'Admin';
+  document.getElementById('adm-user-avatar').textContent = initials;
 
   document.addEventListener('click', (e) => {
     if (e.target?.dataset?.action === 'logout') logout('/login.html');
@@ -177,10 +184,9 @@ function renderFilteredReports() {
         <td>${nameCell(r.blocked_user_id)}</td>
         <td>${esc(r.reason || '—')}</td>
         <td>
-          <button class="adm-btn adm-btn--warn adm-btn--sm"
-            data-action="suspend-reported" data-id="${esc(r.blocked_user_id)}">
-            Suspend user
-          </button>
+          ${reportUserMap[r.blocked_user_id]?.is_profile_paused
+            ? `<button class="adm-btn adm-btn--ok adm-btn--sm" data-action="reactivate-reported" data-id="${esc(r.blocked_user_id)}">Reactivate</button>`
+            : `<button class="adm-btn adm-btn--warn adm-btn--sm" data-action="suspend-reported" data-id="${esc(r.blocked_user_id)}">Suspend user</button>`}
         </td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -403,36 +409,35 @@ document.addEventListener('click', async (e) => {
   }
 
   // ── User actions ──────────────────────────────────────────────────────────
-  // Suspend = sets is_profile_paused=true (same mechanism as pause, just labelled differently)
-  // Reactivate = clears is_profile_paused
-  const userActionMsgs = {
-    suspend:    { title:'Suspend this user?',     msg:'Their profile will be hidden from Find Mates.', danger:true  },
-    reactivate: { title:'Reactivate this user?',  msg:'Restores their profile visibility.', danger:false },
-  };
-  if (userActionMsgs[action]) {
-    confirm_(userActionMsgs[action], async () => {
-      btn.disabled = true;
-      const { adminSetUserPaused } = await import('./supabase.js');
-      const pausing = action === 'suspend';
-      const { error } = await adminSetUserPaused(id, adminPhone, pausing);
-      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
-      const u = allUsers.find(u => u.id === id);
-      if (u) u.is_profile_paused = pausing;
-      renderFilteredUsers();
-      toast(pausing ? 'User suspended ✓' : 'User reactivated ✓', 'success');
-    }); return;
-  }
-
-  // Suspend reported user directly from Reports page
-  if (action === 'suspend-reported') {
+  // Suspend (from Users panel) — Reactivate is Reports panel only
+  if (action === 'suspend') {
     confirm_({ title:'Suspend this user?', msg:'Their profile will be hidden from Find Mates.', danger:true }, async () => {
       btn.disabled = true;
       const { adminSetUserPaused } = await import('./supabase.js');
       const { error } = await adminSetUserPaused(id, adminPhone, true);
       if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
-      btn.textContent = 'Suspended ✓';
-      btn.className   = 'adm-btn adm-btn--ghost adm-btn--sm';
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.is_profile_paused = true;
+      renderFilteredUsers();
       toast('User suspended ✓', 'success');
+    }); return;
+  }
+
+  // Suspend reported user directly from Reports page
+  if (action === 'suspend-reported' || action === 'reactivate-reported') {
+    const pausing = action === 'suspend-reported';
+    confirm_(pausing
+      ? { title:'Suspend this user?',    msg:'Their profile will be hidden from Find Mates.', danger:true  }
+      : { title:'Reactivate this user?', msg:'Restores their profile visibility.', danger:false },
+    async () => {
+      btn.disabled = true;
+      const { adminSetUserPaused } = await import('./supabase.js');
+      const { error } = await adminSetUserPaused(id, adminPhone, pausing);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      // Update local cache so button flips immediately
+      if (reportUserMap[id]) reportUserMap[id].is_profile_paused = pausing;
+      renderFilteredReports();
+      toast(pausing ? 'User suspended ✓' : 'User reactivated ✓', 'success');
     }); return;
   }
 
@@ -523,7 +528,6 @@ function renderUsersTable(users, withActions = false) {
     const isAdmin = u.role === 'admin';
     const actions = withActions ? `<td>
       <div class="adm-actions">
-        ${u.is_profile_paused  ? `<button class="adm-btn adm-btn--ok   adm-btn--sm" data-action="reactivate" data-id="${esc(u.id)}">Reactivate</button>` : ''}
         <button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
           data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
           ${isAdmin ? 'Revoke admin' : 'Make admin'}
