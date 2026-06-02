@@ -98,6 +98,13 @@
   font-weight: 700; font-size: 16px;
   box-shadow: var(--hm-shadow-sm);
 }
+.hm-brand__logo {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: var(--hm-shadow-sm);
+  flex-shrink: 0;
+}
 .hm-nav-links {
   display: flex; align-items: center; justify-content: center; gap: var(--hm-space-2);
   list-style: none; padding: 0; margin: 0;

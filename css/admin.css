@@ -77,6 +77,12 @@ body.adm-body {
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 18px;
 }
+.adm-brand__logo {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
 .adm-brand__tag {
   font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
   background: var(--adm-surface-2); color: var(--adm-text-muted);
