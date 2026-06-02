@@ -51,8 +51,12 @@ async function init() {
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
   myUserId             = me?.id        || null;
   myExamType           = me?.exam_type || 'NEET UG';
-  // State-level boundary: exam centre state if set, else home state
-  myExamCentreState = me?.exam_centre_state || me?.state || null;
+  // State-level boundary: exam centre state if set, else home state.
+  // Admins/superadmins bypass the filter so they can see all users.
+  const myRole = me?.role || 'user';
+  myExamCentreState = (myRole === 'admin' || myRole === 'superadmin')
+    ? null
+    : (me?.exam_centre_state || me?.state || null);
 
   // Cache role so the navbar admin link can show/hide without an extra fetch
   try { sessionStorage.setItem('hm.user.role', me?.role || 'user'); } catch {}
