@@ -37,7 +37,7 @@ export function from(table) {
 export function getUserByPhone(phone) {
   return query(
     from('users')
-      .select('id, profile_completed, exam_type, role')
+      .select('id, profile_completed, exam_type, role, state, exam_centre_state')
       .eq('phone', phone)
       .maybeSingle()
   );
