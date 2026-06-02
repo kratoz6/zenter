@@ -158,12 +158,19 @@ function renderNavAuthState(user) {
     updateNavbarAvatar();
 
     // Hide the profile avatar/dropdown during onboarding.
-    // handlePostLogin() writes 'false' before redirecting to onboarding, so this
-    // fires on the first render of every onboarding page without any extra fetch.
     const navProfile = document.querySelector('.hm-nav-profile');
     if (navProfile) {
       const done = sessionStorage.getItem(STORAGE_KEYS.profileCompleted);
       if (done === 'false') navProfile.hidden = true;
+    }
+
+    // Show the Admin panel link only to admin users.
+    // Role is cached in 'hm.user.role' by dashboard.js after fetching profile.
+    const adminNavItem = document.getElementById('hm-admin-nav-item');
+    if (adminNavItem) {
+      try {
+        adminNavItem.hidden = sessionStorage.getItem('hm.user.role') !== 'admin';
+      } catch { adminNavItem.hidden = true; }
     }
   }
 }

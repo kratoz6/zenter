@@ -41,6 +41,10 @@
         </button>
 
         <ul class="hm-nav-profile__dropdown" id="hm-avatar-dropdown" role="menu">
+          <!-- Admin link — shown only when role=admin is cached (set by dashboard.js) -->
+          <li role="none" id="hm-admin-nav-item" hidden>
+            <a href="/admin.html" class="hm-nav-profile__item" role="menuitem">⚙️ Admin panel</a>
+          </li>
           <li role="none">
             <a href="/profile.html" class="hm-nav-profile__item" role="menuitem">Profile</a>
           </li>

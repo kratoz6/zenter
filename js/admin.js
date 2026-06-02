@@ -134,38 +134,32 @@ function renderFilteredFeedback() {
 }
 
 async function loadReports() {
-  const { getRecentUserReports } = await import('./supabase.js');
-  const { data, error } = await getRecentUserReports(200);
+  // Reports come from blocked_users — every block with a reason is a moderation signal.
+  const { getRecentReports } = await import('./supabase.js');
+  const { data, error } = await getRecentReports(200);
   if (error || !data) { document.getElementById('adm-reports-list').innerHTML = emptyState('⚠️','Could not load.'); return; }
   allReports = data;
   renderFilteredReports();
   const rerender = debounce(renderFilteredReports, 180);
-  ['adm-reports-search','adm-reports-filter-status'].forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
+  document.getElementById('adm-reports-search')?.addEventListener('input', rerender);
 }
 
 function renderFilteredReports() {
   const search = (document.getElementById('adm-reports-search')?.value || '').toLowerCase();
-  const status = document.getElementById('adm-reports-filter-status')?.value || '';
   const filtered = allReports.filter(r => {
-    if (search && !`${r.reason} ${r.details || ''}`.toLowerCase().includes(search)) return false;
-    if (status && r.status !== status) return false;
+    if (search && !`${r.reason || ''} ${r.blocker_user_id || ''}`.toLowerCase().includes(search)) return false;
     return true;
   });
   const el = document.getElementById('adm-reports-list');
-  if (!filtered.length) { el.innerHTML = emptyState('🚩','No reports match filters.'); return; }
+  if (!filtered.length) { el.innerHTML = emptyState('🚩', search ? 'No reports match search.' : 'No block reports yet.'); return; }
   el.innerHTML = `<table class="adm-table">
-    <thead><tr><th>Date</th><th>Reason</th><th>Details</th><th>Status</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Date</th><th>Blocker (last 8)</th><th>Blocked (last 8)</th><th>Reason</th></tr></thead>
     <tbody>${filtered.map(r => `
-      <tr data-report-id="${esc(r.id)}">
+      <tr>
         <td>${esc(fmtDate(r.created_at))}</td>
+        <td><code>${esc((r.blocker_user_id||'').slice(0,8))}…</code></td>
+        <td><code>${esc((r.blocked_user_id||'').slice(0,8))}…</code></td>
         <td>${esc(r.reason || '—')}</td>
-        <td>${esc((r.details || '').slice(0,80))}</td>
-        <td><span class="adm-pill adm-pill--${esc(r.status)}">${esc(r.status)}</span></td>
-        <td><div class="adm-actions">
-          ${r.status === 'pending' ? `<button class="adm-btn adm-btn--ghost adm-btn--sm" data-action="review-report" data-id="${esc(r.id)}">Review</button>` : ''}
-          ${r.status !== 'resolved' ? `<button class="adm-btn adm-btn--ok adm-btn--sm" data-action="resolve-report" data-id="${esc(r.id)}">Resolve</button>` : ''}
-          ${r.status !== 'dismissed' ? `<button class="adm-btn adm-btn--warn adm-btn--sm" data-action="dismiss-report" data-id="${esc(r.id)}">Dismiss</button>` : ''}
-        </div></td>
       </tr>`).join('')}
     </tbody></table>`;
 }
@@ -237,48 +231,14 @@ async function loadSettings() {
   el.innerHTML = `
     <div class="adm-settings-grid">
 
-      <div class="adm-card adm-settings-card">
-        <div class="adm-card__header">🌐 Global Controls</div>
-        <div class="adm-card__body" style="padding:16px 20px;">
-          <div class="adm-toggle-row">
-            <div>
-              <div class="adm-toggle-label">Global Maintenance Mode</div>
-              <div class="adm-toggle-sub">Blocks all users from accessing the app</div>
-            </div>
-            <label class="adm-switch">
-              <input type="checkbox" id="toggle-global-maintenance" ${gm ? 'checked' : ''} data-config="global_maintenance" data-type="bool">
-              <span class="adm-switch__track"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div class="adm-card adm-settings-card">
-        <div class="adm-card__header">⚙️ Feature Kill Switches</div>
-        <div class="adm-card__body" style="padding:16px 20px;">
-          ${[
-            ['find_mates',     'Find Mates',    'Show/hide the Find Mates feed'],
-            ['connections',    'Connections',   'Enable/disable connection requests'],
-            ['signup',         'Signup',        'Allow/block new registrations'],
-            ['feedback',       'Feedback',      'Show/hide the Feedback button'],
-            ['announcements',  'Announcements', 'Show/hide the announcement bar'],
-          ].map(([key, label, desc]) => `
-            <div class="adm-toggle-row">
-              <div>
-                <div class="adm-toggle-label">${esc(label)}</div>
-                <div class="adm-toggle-sub">${esc(desc)}</div>
-              </div>
-              <label class="adm-switch">
-                <input type="checkbox" data-config="feature_toggles.${esc(key)}"
-                  ${ft[key] !== false ? 'checked' : ''}>
-                <span class="adm-switch__track"></span>
-              </label>
-            </div>`).join('')}
-        </div>
-      </div>
-
       <div class="adm-card adm-settings-card" style="grid-column:1/-1;">
-        <div class="adm-card__header">📢 Announcements</div>
+        <div class="adm-card__header" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>📢 Announcements</span>
+          <label class="adm-switch">
+            <input type="checkbox" data-config="feature_toggles.announcements" ${ft['announcements'] !== false ? 'checked' : ''}>
+            <span class="adm-switch__track"></span>
+          </label>
+        </div>
         <div class="adm-card__body" style="padding:16px 20px;">
           <div id="adm-announcements-list"></div>
           <button class="adm-btn adm-btn--ok" id="adm-add-announcement" style="margin-top:12px;">+ New announcement</button>

@@ -52,6 +52,9 @@ async function init() {
   myUserId   = me?.id        || null;
   myExamType = me?.exam_type || 'NEET UG'; // legacy users (null) treated as NEET UG
 
+  // Cache role so the navbar admin link can show/hide without an extra fetch
+  try { sessionStorage.setItem('hm.user.role', me?.role || 'user'); } catch {}
+
   // Non-NEET UG exam types → maintenance page (product focus is NEET UG).
   if (myExamType !== 'NEET UG') {
     window.location.replace('/maintenance.html');
