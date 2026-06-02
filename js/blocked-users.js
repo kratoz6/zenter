@@ -2,7 +2,7 @@
 
 import { requireOnboarded }                   from './auth.js';
 import { getBlockedList, getUsersByIds,
-         unblockUser }                         from './supabase.js';
+         unblockUser, deleteConnectionsBetween } from './supabase.js';
 import { setButtonBusy, toast }                from './ui.js';
 
 let myUserId   = null;
@@ -83,6 +83,11 @@ async function loadBlocked() {
         setButtonBusy(btn, false);
         return;
       }
+      // Clean up any stale connection rows (e.g. a request the blocked user
+      // sent while blocked). This gives both users a clean slate so they can
+      // send fresh requests after unblocking.
+      await deleteConnectionsBetween(myUserId, blockedId).catch(() => {});
+
       // Remove row from UI
       btn.closest('.hm-blocked-item')?.remove();
       // If list is now empty show empty state

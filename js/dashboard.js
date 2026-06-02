@@ -998,3 +998,18 @@ const STAY_LABEL = {
 };
 
 document.addEventListener('DOMContentLoaded', init);
+
+// bfcache fix: when the user navigates back from another page (e.g. unblocking
+// from blocked-users.html), the browser may restore this page from the
+// back/forward cache with frozen JS state. Detect this and re-fetch blocked IDs
+// + user data so newly-unblocked users appear immediately in the feed.
+window.addEventListener('pageshow', async (e) => {
+  if (!e.persisted) return; // normal load — init() already ran
+  if (!myUserId) return;
+  // Re-fetch blocked IDs with the latest state
+  const { getBlockedUserIds: fetchBlocked } = await import('./supabase.js');
+  const { data: blocked } = await fetchBlocked(myUserId);
+  blockedUserIds = new Set((blocked || []).map(b => b.blocked_user_id));
+  // Reload the feed so unblocked users reappear and stale ones disappear
+  await loadData();
+});
