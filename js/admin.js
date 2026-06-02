@@ -153,13 +153,19 @@ function renderFilteredReports() {
   const el = document.getElementById('adm-reports-list');
   if (!filtered.length) { el.innerHTML = emptyState('🚩', search ? 'No reports match search.' : 'No block reports yet.'); return; }
   el.innerHTML = `<table class="adm-table">
-    <thead><tr><th>Date</th><th>Blocker (last 8)</th><th>Blocked (last 8)</th><th>Reason</th></tr></thead>
+    <thead><tr><th>Date</th><th>Reported by</th><th>Reported user</th><th>Reason</th><th>Action</th></tr></thead>
     <tbody>${filtered.map(r => `
       <tr>
         <td>${esc(fmtDate(r.created_at))}</td>
         <td><code>${esc((r.blocker_user_id||'').slice(0,8))}…</code></td>
         <td><code>${esc((r.blocked_user_id||'').slice(0,8))}…</code></td>
         <td>${esc(r.reason || '—')}</td>
+        <td>
+          <button class="adm-btn adm-btn--warn adm-btn--sm"
+            data-action="suspend-reported" data-id="${esc(r.blocked_user_id)}">
+            Suspend user
+          </button>
+        </td>
       </tr>`).join('')}
     </tbody></table>`;
 }
@@ -381,29 +387,36 @@ document.addEventListener('click', async (e) => {
   }
 
   // ── User actions ──────────────────────────────────────────────────────────
-  const userStatusMap  = { suspend:'suspended', ban:'banned', reactivate:'active' };
+  // Suspend = sets is_profile_paused=true (same mechanism as pause, just labelled differently)
+  // Reactivate = clears is_profile_paused
   const userActionMsgs = {
-    pause:      { title:'Pause this user?',       msg:'Their profile is hidden from Find Mates.', danger:false },
-    suspend:    { title:'Suspend this user?',      msg:'They won\'t appear in Find Mates.', danger:true  },
-    ban:        { title:'Ban this user?',          msg:'Permanently restricts their account.', danger:true  },
-    reactivate: { title:'Reactivate this user?',  msg:'Restores their account to active.', danger:false },
+    suspend:    { title:'Suspend this user?',     msg:'Their profile will be hidden from Find Mates.', danger:true  },
+    reactivate: { title:'Reactivate this user?',  msg:'Restores their profile visibility.', danger:false },
   };
   if (userActionMsgs[action]) {
     confirm_(userActionMsgs[action], async () => {
       btn.disabled = true;
-      const { adminSetUserStatus, adminSetUserPaused } = await import('./supabase.js');
-      let error;
-      if (action === 'pause') {
-        const paused = btn.dataset.paused === '1';
-        ({ error } = await adminSetUserPaused(id, adminPhone, !paused));
-        if (!error) { const u = allUsers.find(u => u.id === id); if (u) u.is_profile_paused = !paused; }
-      } else {
-        ({ error } = await adminSetUserStatus(id, adminPhone, userStatusMap[action]));
-        if (!error) { const u = allUsers.find(u => u.id === id); if (u) u.account_status = userStatusMap[action]; }
-      }
+      const { adminSetUserPaused } = await import('./supabase.js');
+      const pausing = action === 'suspend';
+      const { error } = await adminSetUserPaused(id, adminPhone, pausing);
       if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.is_profile_paused = pausing;
       renderFilteredUsers();
-      toast(`User ${action}d ✓`, 'success');
+      toast(pausing ? 'User suspended ✓' : 'User reactivated ✓', 'success');
+    }); return;
+  }
+
+  // Suspend reported user directly from Reports page
+  if (action === 'suspend-reported') {
+    confirm_({ title:'Suspend this user?', msg:'Their profile will be hidden from Find Mates.', danger:true }, async () => {
+      btn.disabled = true;
+      const { adminSetUserPaused } = await import('./supabase.js');
+      const { error } = await adminSetUserPaused(id, adminPhone, true);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      btn.textContent = 'Suspended ✓';
+      btn.className   = 'adm-btn adm-btn--ghost adm-btn--sm';
+      toast('User suspended ✓', 'success');
     }); return;
   }
 
@@ -493,12 +506,10 @@ function renderUsersTable(users, withActions = false) {
     const display = u.is_profile_paused ? 'paused' : status;
     const actions = withActions ? `<td>
       <div class="adm-actions">
-        ${status === 'active' ? `<button class="adm-btn adm-btn--ghost adm-btn--sm" data-action="pause" data-id="${esc(u.id)}" data-paused="${u.is_profile_paused?'1':'0'}">${u.is_profile_paused?'Unpause':'Pause'}</button>` : ''}
-        ${status === 'active' ? `<button class="adm-btn adm-btn--warn adm-btn--sm" data-action="suspend" data-id="${esc(u.id)}">Suspend</button>` : ''}
-        ${status !== 'banned' ? `<button class="adm-btn adm-btn--danger adm-btn--sm" data-action="ban" data-id="${esc(u.id)}">Ban</button>` : ''}
-        ${status !== 'active' ? `<button class="adm-btn adm-btn--ok adm-btn--sm" data-action="reactivate" data-id="${esc(u.id)}">Reactivate</button>` : ''}
+        ${!u.is_profile_paused ? `<button class="adm-btn adm-btn--warn adm-btn--sm" data-action="suspend" data-id="${esc(u.id)}">Suspend</button>` : ''}
+        ${u.is_profile_paused  ? `<button class="adm-btn adm-btn--ok   adm-btn--sm" data-action="reactivate" data-id="${esc(u.id)}">Reactivate</button>` : ''}
         <select class="adm-filter" style="font-size:11px;padding:3px 6px;" onchange="document.dispatchEvent(new CustomEvent('set-role',{detail:{id:'${esc(u.id)}',role:this.value}}))">
-          ${['user','moderator','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
+          ${['user','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
         </select>
       </div>
     </td>` : '';
