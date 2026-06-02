@@ -99,7 +99,12 @@ async function loadBlocked() {
             <p class="hm-text-muted">You haven't blocked anyone.</p>
           </div>`;
       }
-      toast('User unblocked — they\'ll appear in Find Mates again.', { variant: 'success' });
+      // Mark that an unblock happened so dashboard.js re-fetches on next load
+      try { sessionStorage.setItem('hm.unblocked', '1'); } catch {}
+      toast('User unblocked — taking you to Find Mates.', { variant: 'success' });
+      // Force a fresh dashboard load after a short delay so the unblocked user
+      // is guaranteed to appear (eliminates any bfcache or stale-state issue).
+      setTimeout(() => { window.location.href = '/dashboard.html'; }, 1200);
     });
   });
 }

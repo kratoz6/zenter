@@ -117,6 +117,17 @@ async function init() {
 
 async function loadData() {
   renderSkeletons();
+
+  // If the user just came from unblocking someone, re-fetch the blocked-IDs set
+  // before loading so the unblocked user definitely passes the filter.
+  try {
+    if (sessionStorage.getItem('hm.unblocked') && myUserId) {
+      sessionStorage.removeItem('hm.unblocked');
+      const { data: fresh } = await getBlockedUserIds(myUserId);
+      blockedUserIds = new Set((fresh || []).map(b => b.blocked_user_id));
+    }
+  } catch {}
+
   const [usersRes, connsRes] = await Promise.all([
     getAllUsers(myExamType),
     myUserId ? getMyConnections(myUserId) : Promise.resolve({ data: [], error: null }),
