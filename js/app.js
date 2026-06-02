@@ -28,6 +28,7 @@ async function bootstrap() {
   highlightActiveNav(route);
   wireGlobalNav();
   wireBrandNavigation();
+  loadAnnouncementBar(route);
 
   // Reflect auth state into the navbar (login button <-> avatar/logout).
   onAuthChange(renderNavAuthState);
@@ -244,6 +245,52 @@ async function initProfile() {
   const user = await requireAuth();
   if (!user) return;
   // Phase 2: load + edit profile, manage privacy + connections.
+}
+
+// ─── Announcement ticker bar ──────────────────────────────────────────────────
+// Shown below the navbar on all pages EXCEPT profile and onboarding.
+// Data comes from the announcements table, controlled via /admin.html → Settings.
+
+async function loadAnnouncementBar(route) {
+  // Skip on profile, onboarding — these are task-focused flows
+  if (['profile', 'onboarding'].includes(route)) return;
+
+  try {
+    const { getActiveAnnouncements, getPlatformConfig } = await import('./supabase.js');
+
+    // Check feature toggle (non-blocking — default to showing if config unavailable)
+    const { data: configRows } = await getPlatformConfig();
+    const toggles = (configRows || []).find(r => r.key === 'feature_toggles')?.value;
+    if (toggles?.announcements === false) return;
+
+    const { data: announcements } = await getActiveAnnouncements();
+    if (!announcements?.length) return;
+
+    // Build the ticker text — all active announcements joined with a separator
+    const text = announcements.map(a => a.message).join('   ·   ');
+    const safe = text.replace(/[&<>"']/g,
+      c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+    const bar = document.createElement('div');
+    bar.id        = 'hm-announcement-bar';
+    bar.className = 'hm-announcement-bar';
+    bar.setAttribute('role', 'marquee');
+    bar.setAttribute('aria-label', 'Announcements');
+    // Duplicate text so the loop is seamless (animation moves -50%)
+    bar.innerHTML = `
+      <div class="hm-announcement-bar__ticker">
+        <span class="hm-announcement-bar__text">📢 ${safe}</span>
+        <span class="hm-announcement-bar__text" aria-hidden="true">📢 ${safe}</span>
+      </div>`;
+
+    // Insert immediately after the navbar
+    const navbar = document.getElementById('hm-navbar');
+    if (navbar?.parentNode) {
+      navbar.parentNode.insertBefore(bar, navbar.nextSibling);
+    }
+  } catch (err) {
+    console.warn('[announcements] could not load', err);
+  }
 }
 
 // Surface a one-time ready signal for debugging in DevTools.
