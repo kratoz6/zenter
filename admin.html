@@ -51,7 +51,11 @@
     <!-- ── Main ── -->
     <main class="adm-main">
       <div class="adm-topbar">
-        <span class="adm-topbar__title" id="adm-page-title">Dashboard</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <!-- Back to app — visible on all screen sizes, prominent on mobile -->
+          <a href="/dashboard.html" class="adm-topbar__back">← App</a>
+          <span class="adm-topbar__title" id="adm-page-title">Dashboard</span>
+        </div>
         <div class="adm-topbar__user">
           <div class="adm-topbar__avatar" id="adm-user-avatar" aria-hidden="true">A</div>
           <span id="adm-user-phone">—</span>
@@ -87,7 +91,6 @@
             <input type="search" id="adm-user-search" class="adm-search" placeholder="Search by name or phone…" />
             <select id="adm-user-filter-exam"   class="adm-filter"><option value="">All exams</option><option value="NEET UG">NEET UG</option><option value="NEET PG">NEET PG</option><option value="INICET">INICET</option></select>
             <select id="adm-user-filter-gender" class="adm-filter"><option value="">All genders</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
-            <select id="adm-user-filter-status" class="adm-filter"><option value="">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="banned">Banned</option></select>
           </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
@@ -96,12 +99,8 @@
 
         <!-- Feedback -->
         <section class="adm-panel" id="adm-panel-feedback" data-route="feedback">
-          <h1 class="adm-h1">Feedback</h1>
+          <h1 class="adm-h1">Feedbacks</h1>
           <p class="adm-sub">In-app feedback submissions — resolve or remove spam.</p>
-          <div class="adm-toolbar">
-            <input type="search" id="adm-fb-search" class="adm-search" placeholder="Search feedback…" />
-            <select id="adm-fb-filter-status" class="adm-filter"><option value="">All</option><option value="pending">Pending</option><option value="resolved">Resolved</option></select>
-          </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-feedback-list"><div class="adm-empty">Loading…</div></div>
           </div>
@@ -111,9 +110,6 @@
         <section class="adm-panel" id="adm-panel-reports" data-route="reports">
           <h1 class="adm-h1">Reports</h1>
           <p class="adm-sub">User-submitted abuse, spam, and fake-profile reports.</p>
-          <div class="adm-toolbar">
-            <input type="search" id="adm-reports-search" class="adm-search" placeholder="Search by reason…" />
-          </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-reports-list"><div class="adm-empty">Loading…</div></div>
           </div>

@@ -455,3 +455,17 @@ body.adm-body {
 .adm-pill--coming_soon { background: rgba(59,130,246,0.15);  color: #3B82F6; }
 .adm-pill--disabled    { background: rgba(239,68,68,0.15);   color: #EF4444; }
 .adm-pill--info        { background: rgba(59,130,246,0.15);  color: #3B82F6; }
+
+/* Back to app link — visible in topbar on all screen sizes */
+.adm-topbar__back {
+  color: var(--adm-text-muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border: 1px solid var(--adm-border);
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: background 120ms, color 120ms;
+}
+.adm-topbar__back:hover { background: var(--adm-surface-2); color: var(--adm-text); }

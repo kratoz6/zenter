@@ -97,7 +97,7 @@ async function loadUsers() {
   allUsers = data;
   renderFilteredUsers();
   const rerender = debounce(renderFilteredUsers, 180);
-  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender','adm-user-filter-status']
+  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender']
     .forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
 }
 
@@ -105,12 +105,10 @@ function renderFilteredUsers() {
   const search = (document.getElementById('adm-user-search')?.value || '').toLowerCase();
   const exam   = document.getElementById('adm-user-filter-exam')?.value   || '';
   const gender = document.getElementById('adm-user-filter-gender')?.value || '';
-  const status = document.getElementById('adm-user-filter-status')?.value || '';
   const filtered = allUsers.filter(u => {
     if (search && !`${u.full_name} ${u.phone}`.toLowerCase().includes(search)) return false;
     if (exam   && u.exam_type !== exam)  return false;
     if (gender && u.gender   !== gender) return false;
-    if (status && (u.account_status || 'active') !== status) return false;
     return true;
   });
   const el = document.getElementById('adm-users-list');
@@ -123,19 +121,10 @@ async function loadFeedback() {
   if (error || !data) { document.getElementById('adm-feedback-list').innerHTML = emptyState('⚠️','Could not load.'); return; }
   allFeedbacks = data;
   renderFilteredFeedback();
-  const rerender = debounce(renderFilteredFeedback, 180);
-  ['adm-fb-search','adm-fb-filter-status'].forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
 }
 
 function renderFilteredFeedback() {
-  const search = (document.getElementById('adm-fb-search')?.value || '').toLowerCase();
-  const status = document.getElementById('adm-fb-filter-status')?.value || '';
-  const filtered = allFeedbacks.filter(f => {
-    if (search && !`${f.user_name} ${f.feedback_message}`.toLowerCase().includes(search)) return false;
-    if (status === 'resolved' && !f.is_resolved) return false;
-    if (status === 'pending'  &&  f.is_resolved) return false;
-    return true;
-  });
+  const filtered = allFeedbacks;
   const el = document.getElementById('adm-feedback-list');
   el.innerHTML = filtered.length ? renderFeedbackTable(filtered) : emptyState('💬','No feedback matches filters.');
 }
@@ -156,19 +145,12 @@ async function loadReports() {
   }
 
   renderFilteredReports();
-  document.getElementById('adm-reports-search')?.addEventListener('input', debounce(renderFilteredReports, 180));
 }
 
 function renderFilteredReports() {
-  const search = (document.getElementById('adm-reports-search')?.value || '').toLowerCase();
-  const filtered = allReports.filter(r => {
-    if (!search) return true;
-    const blocker = reportUserMap[r.blocker_user_id]?.full_name || '';
-    const blocked  = reportUserMap[r.blocked_user_id]?.full_name || '';
-    return `${blocker} ${blocked} ${r.reason || ''}`.toLowerCase().includes(search);
-  });
+  const filtered = allReports;
   const el = document.getElementById('adm-reports-list');
-  if (!filtered.length) { el.innerHTML = emptyState('🚩', search ? 'No reports match search.' : 'No block reports yet.'); return; }
+  if (!filtered.length) { el.innerHTML = emptyState('🚩', 'No block reports yet.'); return; }
 
   const nameCell = (id) => {
     const u = reportUserMap[id];
@@ -306,17 +288,21 @@ async function loadSettings() {
   await refreshAnnouncementsList();
 
   // Load audit log
-  const { getAuditLog } = await import('./supabase.js');
-  const { data: auditData } = await getAuditLog(30);
+  const { getAuditLog, getRecentUsers } = await import('./supabase.js');
+  const [auditRes, adminsRes] = await Promise.all([getAuditLog(30), getRecentUsers(500)]);
+  const phoneToName = Object.fromEntries(
+    (adminsRes.data || []).map(u => [u.phone, u.full_name || u.phone])
+  );
   const auditEl = document.getElementById('adm-audit-log');
-  if (!auditData?.length) { auditEl.innerHTML = emptyState('📋','No audit entries yet.'); }
+  const auditData = auditRes.data || [];
+  if (!auditData.length) { auditEl.innerHTML = emptyState('📋','No audit entries yet.'); }
   else {
     auditEl.innerHTML = `<table class="adm-table">
       <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th></tr></thead>
       <tbody>${auditData.map(a => `
         <tr>
           <td>${esc(fmtDate(a.created_at))}</td>
-          <td style="font-size:11px">${esc(a.admin_phone?.slice(-6) || '—')}</td>
+          <td>${esc(phoneToName[a.admin_phone] || a.admin_phone?.slice(-6) || '—')}</td>
           <td>${esc(a.action)}</td>
           <td style="font-size:11px">${esc(a.target_type || '')} ${esc((a.target_id || '').slice(0,8))}</td>
         </tr>`).join('')}
@@ -525,13 +511,15 @@ function renderUsersTable(users, withActions = false) {
   const rows = users.map(u => {
     const status  = u.account_status || 'active';
     const display = u.is_profile_paused ? 'paused' : status;
-    const isAdmin = u.role === 'admin';
+    const isAdmin = u.role === 'admin'; const isSuperAdmin = u.role === 'superadmin';
     const actions = withActions ? `<td>
       <div class="adm-actions">
-        <button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
-          data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
-          ${isAdmin ? 'Revoke admin' : 'Make admin'}
-        </button>
+        ${isSuperAdmin
+          ? '<span class="adm-pill adm-pill--admin" style="font-size:10px;">⚡ superadmin</span>'
+          : `<button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
+              data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
+              ${isAdmin ? 'Revoke admin' : 'Make admin'}
+            </button>`}
       </div>
     </td>` : '';
     return `<tr>
