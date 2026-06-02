@@ -170,7 +170,8 @@ function renderNavAuthState(user) {
     const adminNavItem = document.getElementById('hm-admin-nav-item');
     if (adminNavItem) {
       try {
-        adminNavItem.hidden = sessionStorage.getItem('hm.user.role') !== 'admin';
+        const cachedRole = sessionStorage.getItem('hm.user.role');
+        adminNavItem.hidden = cachedRole !== 'admin' && cachedRole !== 'superadmin';
       } catch { adminNavItem.hidden = true; }
     }
   }

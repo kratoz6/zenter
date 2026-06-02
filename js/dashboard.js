@@ -59,8 +59,13 @@ async function init() {
     ? null
     : (me?.exam_centre_state || null);
 
-  // Cache role so the navbar admin link can show/hide without an extra fetch
+  // Cache role so the navbar admin link can show/hide without an extra fetch.
+  // Also update the DOM directly — renderNavAuthState() in app.js fires before
+  // this fetch completes on a fresh login, so the link stays hidden without this.
   try { sessionStorage.setItem('hm.user.role', me?.role || 'user'); } catch {}
+  const isAdmin = myRole === 'admin' || myRole === 'superadmin';
+  const adminNavItem = document.getElementById('hm-admin-nav-item');
+  if (adminNavItem) adminNavItem.hidden = !isAdmin;
 
   // Non-NEET UG exam types → maintenance page (product focus is NEET UG).
   if (myExamType !== 'NEET UG') {
