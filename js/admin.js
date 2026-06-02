@@ -133,32 +133,48 @@ function renderFilteredFeedback() {
   el.innerHTML = filtered.length ? renderFeedbackTable(filtered) : emptyState('💬','No feedback matches filters.');
 }
 
+let reportUserMap = {}; // id → { full_name, phone }
+
 async function loadReports() {
-  // Reports come from blocked_users — every block with a reason is a moderation signal.
-  const { getRecentReports } = await import('./supabase.js');
+  const { getRecentReports, getUsersByIds } = await import('./supabase.js');
   const { data, error } = await getRecentReports(200);
   if (error || !data) { document.getElementById('adm-reports-list').innerHTML = emptyState('⚠️','Could not load.'); return; }
   allReports = data;
+
+  // Fetch user details for both sides of each block so we can show names
+  const ids = [...new Set(data.flatMap(r => [r.blocker_user_id, r.blocked_user_id].filter(Boolean)))];
+  if (ids.length) {
+    const { data: users } = await getUsersByIds(ids);
+    reportUserMap = Object.fromEntries((users || []).map(u => [u.id, u]));
+  }
+
   renderFilteredReports();
-  const rerender = debounce(renderFilteredReports, 180);
-  document.getElementById('adm-reports-search')?.addEventListener('input', rerender);
+  document.getElementById('adm-reports-search')?.addEventListener('input', debounce(renderFilteredReports, 180));
 }
 
 function renderFilteredReports() {
   const search = (document.getElementById('adm-reports-search')?.value || '').toLowerCase();
   const filtered = allReports.filter(r => {
-    if (search && !`${r.reason || ''} ${r.blocker_user_id || ''}`.toLowerCase().includes(search)) return false;
-    return true;
+    if (!search) return true;
+    const blocker = reportUserMap[r.blocker_user_id]?.full_name || '';
+    const blocked  = reportUserMap[r.blocked_user_id]?.full_name || '';
+    return `${blocker} ${blocked} ${r.reason || ''}`.toLowerCase().includes(search);
   });
   const el = document.getElementById('adm-reports-list');
   if (!filtered.length) { el.innerHTML = emptyState('🚩', search ? 'No reports match search.' : 'No block reports yet.'); return; }
+
+  const nameCell = (id) => {
+    const u = reportUserMap[id];
+    return u ? `${esc(u.full_name || '—')}<br><small style="color:var(--adm-text-dim)">${esc(formatPhonePretty(u.phone) || '')}</small>` : `<code style="font-size:11px">${esc((id||'').slice(0,8))}…</code>`;
+  };
+
   el.innerHTML = `<table class="adm-table">
     <thead><tr><th>Date</th><th>Reported by</th><th>Reported user</th><th>Reason</th><th>Action</th></tr></thead>
     <tbody>${filtered.map(r => `
       <tr>
         <td>${esc(fmtDate(r.created_at))}</td>
-        <td><code>${esc((r.blocker_user_id||'').slice(0,8))}…</code></td>
-        <td><code>${esc((r.blocked_user_id||'').slice(0,8))}…</code></td>
+        <td>${nameCell(r.blocker_user_id)}</td>
+        <td>${nameCell(r.blocked_user_id)}</td>
         <td>${esc(r.reason || '—')}</td>
         <td>
           <button class="adm-btn adm-btn--warn adm-btn--sm"
@@ -504,13 +520,14 @@ function renderUsersTable(users, withActions = false) {
   const rows = users.map(u => {
     const status  = u.account_status || 'active';
     const display = u.is_profile_paused ? 'paused' : status;
+    const isAdmin = u.role === 'admin';
     const actions = withActions ? `<td>
       <div class="adm-actions">
-        ${!u.is_profile_paused ? `<button class="adm-btn adm-btn--warn adm-btn--sm" data-action="suspend" data-id="${esc(u.id)}">Suspend</button>` : ''}
         ${u.is_profile_paused  ? `<button class="adm-btn adm-btn--ok   adm-btn--sm" data-action="reactivate" data-id="${esc(u.id)}">Reactivate</button>` : ''}
-        <select class="adm-filter" style="font-size:11px;padding:3px 6px;" onchange="document.dispatchEvent(new CustomEvent('set-role',{detail:{id:'${esc(u.id)}',role:this.value}}))">
-          ${['user','admin'].map(r => `<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
-        </select>
+        <button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
+          data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
+          ${isAdmin ? 'Revoke admin' : 'Make admin'}
+        </button>
       </div>
     </td>` : '';
     return `<tr>
@@ -547,11 +564,7 @@ function renderFeedbackTable(items) {
     </tbody></table>`;
 }
 
-// Role select change via custom event
-document.addEventListener('set-role', (e) => {
-  const btn = Object.assign(document.createElement('button'), { dataset: { action:'set-role', id:e.detail.id, role:e.detail.role } });
-  btn.dispatchEvent(new MouseEvent('click', { bubbles:true }));
-});
+// set-role is now wired directly via data-action="set-role" on the button — no extra event needed.
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
 
