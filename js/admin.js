@@ -663,15 +663,12 @@ function renderUsersTable(users, withActions = false) {
               data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
               ${isAdmin ? 'Revoke admin' : 'Make admin'}
             </button>`}
-        ${!isPrivileged ? `
-          <button class="adm-btn adm-btn--sm ${display === 'paused' ? 'adm-btn--ok' : 'adm-btn--warn'}"
-            data-action="suspend" data-id="${esc(u.id)}">
-            ${display === 'paused' ? 'Reactivate' : 'Suspend'}
-          </button>
-          <button class="adm-btn adm-btn--sm adm-btn--danger"
-            data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
-            Delete
-          </button>` : `<span class="adm-pill" style="font-size:10px;opacity:.5;" title="Revoke admin first">Protected</span>`}
+        ${!isPrivileged
+          ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
+               data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+               Delete
+             </button>`
+          : `<span class="adm-pill" style="font-size:10px;opacity:.5;" title="Revoke admin first">Protected</span>`}
       </div>
     </td>` : '';
 

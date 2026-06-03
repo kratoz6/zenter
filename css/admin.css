@@ -198,16 +198,17 @@ body.adm-body {
   background: var(--adm-surface);
   border: 1px solid var(--adm-border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: clip; /* clips corners for border-radius without blocking child scroll */
 }
 .adm-card__header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--adm-border);
   font-size: 14px; font-weight: 600;
 }
-.adm-card__body { padding: 0; }
+.adm-card__body { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .adm-table {
   width: 100%;
+  min-width: 600px; /* ensures table doesn't collapse on narrow screens */
   border-collapse: collapse;
   font-size: 13px;
 }
