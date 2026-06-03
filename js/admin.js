@@ -4,11 +4,12 @@
 import { requireAdmin, logout } from './auth.js';
 import { formatPhonePretty }    from './utils.js';
 
-const ROUTES = ['dashboard','users','feedback','reports','exams','analytics','settings'];
-const loaded     = new Set();
-let allUsers     = [];
-let allFeedbacks = [];
-let allReports   = [];
+const ROUTES = ['dashboard','users','seeded','feedback','reports','exams','analytics','settings'];
+const loaded      = new Set();
+let allUsers      = [];
+let allSeeded     = [];
+let allFeedbacks  = [];
+let allReports    = [];
 let adminPhone   = '';
 let platformConfig = {};   // { feature_toggles:{}, exam_config:[], global_maintenance:false }
 
@@ -57,6 +58,11 @@ function getRouteFromHash() {
 function wireRouter() {
   window.addEventListener('hashchange', () => activateRoute(getRouteFromHash()));
 }
+function navigateTo(route) {
+  if (!ROUTES.includes(route)) return;
+  location.hash = route;
+  activateRoute(route);
+}
 function activateRoute(route) {
   document.querySelectorAll('.adm-nav a').forEach(a => a.classList.toggle('is-active', a.dataset.route === route));
   document.querySelectorAll('.adm-panel').forEach(p => p.classList.toggle('is-active', p.dataset.route === route));
@@ -70,6 +76,7 @@ function activateRoute(route) {
 const LOADERS = {
   dashboard:  loadDashboard,
   users:      loadUsers,
+  seeded:     loadSeeded,
   feedback:   loadFeedback,
   reports:    loadReports,
   exams:      loadExams,
@@ -102,9 +109,9 @@ async function loadUsers() {
 }
 
 function renderFilteredUsers() {
-  const search = (document.getElementById('adm-user-search')?.value || '').toLowerCase();
-  const exam   = document.getElementById('adm-user-filter-exam')?.value   || '';
-  const gender = document.getElementById('adm-user-filter-gender')?.value || '';
+  const search  = (document.getElementById('adm-user-search')?.value || '').toLowerCase();
+  const exam    = document.getElementById('adm-user-filter-exam')?.value    || '';
+  const gender  = document.getElementById('adm-user-filter-gender')?.value  || '';
   const filtered = allUsers.filter(u => {
     if (search && !`${u.full_name} ${u.phone}`.toLowerCase().includes(search)) return false;
     if (exam   && u.exam_type !== exam)  return false;
@@ -113,6 +120,91 @@ function renderFilteredUsers() {
   });
   const el = document.getElementById('adm-users-list');
   el.innerHTML = filtered.length ? renderUsersTable(filtered, true) : emptyState('🔍','No users match filters.');
+}
+
+// ─── Seeded users ─────────────────────────────────────────────────────────────
+
+async function loadSeeded() {
+  const { getAllSeededUsers } = await import('./supabase.js');
+  const { data, error } = await getAllSeededUsers(500);
+  if (error || !data) { document.getElementById('adm-seeded-list').innerHTML = emptyState('⚠️','Could not load seeded users.'); return; }
+  allSeeded = data;
+
+  // Populate district filter
+  const distEl = document.getElementById('adm-seeded-filter-district');
+  if (distEl && distEl.options.length === 1) {
+    const districts = [...new Set(data.map(u => u.exam_centre_district).filter(Boolean))].sort();
+    districts.forEach(d => { const o = document.createElement('option'); o.value = o.textContent = d; distEl.appendChild(o); });
+  }
+
+  // Toggle: show or hide exam centre name on seeded user cards in Find Mates
+  const toggle = document.getElementById('adm-seeded-visibility-toggle');
+  const label  = document.getElementById('adm-seeded-visibility-label');
+  if (toggle) {
+    const { getPlatformConfig, adminUpdateConfig } = await import('./supabase.js');
+    const { data: cfgRows } = await getPlatformConfig();
+    const showExamCentre = (cfgRows || []).find(r => r.key === 'seeded_exam_centre_visible')?.value !== false;
+    toggle.checked = showExamCentre;
+    label.textContent = showExamCentre ? 'Exam centre visible on cards' : 'Exam centre hidden on cards';
+
+    toggle.addEventListener('change', async () => {
+      toggle.disabled = true;
+      label.textContent = 'Saving…';
+      const { error } = await adminUpdateConfig('seeded_exam_centre_visible', toggle.checked, adminPhone);
+      toggle.disabled = false;
+      if (error) { toast('Error: ' + error.message, 'error'); toggle.checked = !toggle.checked; return; }
+      label.textContent = toggle.checked ? 'Exam centre visible on cards' : 'Exam centre hidden on cards';
+      toast(toggle.checked ? 'Exam centre shown on seeded cards ✓' : 'Exam centre hidden on seeded cards ✓', 'success');
+    });
+  }
+
+  renderFilteredSeeded();
+  const rerender = debounce(renderFilteredSeeded, 180);
+  ['adm-seeded-search','adm-seeded-filter-district']
+    .forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
+}
+
+function renderFilteredSeeded() {
+  const search   = (document.getElementById('adm-seeded-search')?.value || '').toLowerCase();
+  const district = document.getElementById('adm-seeded-filter-district')?.value || '';
+  const filtered = allSeeded.filter(u => {
+    if (search   && !`${u.full_name} ${u.exam_centre_district}`.toLowerCase().includes(search)) return false;
+    if (district && u.exam_centre_district !== district) return false;
+    return true;
+  });
+  const el = document.getElementById('adm-seeded-list');
+  el.innerHTML = filtered.length ? renderSeededTable(filtered) : emptyState('🔍','No seeded users match filters.');
+}
+
+function renderSeededTable(users) {
+  const rows = users.map(u => {
+    const paused = u.is_profile_paused;
+    return `<tr>
+      <td>${esc(u.full_name||'—')}</td>
+      <td>${esc(u.gender||'—')}</td>
+      <td style="font-size:11px">${esc(u.exam_centre_district||'—')}</td>
+      <td style="font-size:11px">${esc(u.exam_center||'—')}</td>
+      <td>${esc(u.travel_mode||'—')}</td>
+      <td>${esc(u.stay_plan||'—')}</td>
+      <td><span class="adm-pill adm-pill--${paused?'paused':'active'}">${paused?'Hidden':'Visible'}</span></td>
+      <td>
+        <div class="adm-actions" style="gap:4px;">
+          <button class="adm-btn adm-btn--sm ${paused?'adm-btn--ok':'adm-btn--warn'}"
+            data-action="${paused?'show-seeded':'hide-seeded'}" data-id="${esc(u.id)}">
+            ${paused?'Show':'Hide'}
+          </button>
+          <button class="adm-btn adm-btn--sm adm-btn--danger"
+            data-action="delete-seeded" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'user')}">
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table class="adm-table"><thead><tr>
+    <th>Name</th><th>Gender</th><th>District</th><th>Exam Centre</th>
+    <th>Travel</th><th>Stay</th><th>Status</th><th>Actions</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 async function loadFeedback() {
@@ -449,6 +541,50 @@ document.addEventListener('click', async (e) => {
   }
 
   // ── Delete user ───────────────────────────────────────────────────────────
+  // ── Seeded user actions ───────────────────────────────────────────────────
+  if (action === 'delete-all-seeded') {
+    const count = allSeeded.length;
+    confirm_({
+      title: `Delete all ${count} seeded users?`,
+      msg: 'This permanently removes all demo accounts from the seeded_users table. Real users are unaffected. Cannot be undone.',
+      danger: true,
+    }, async () => {
+      btn.disabled = true;
+      const { deleteAllSeededUsers } = await import('./supabase.js');
+      const { error } = await deleteAllSeededUsers();
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      allSeeded = [];
+      renderFilteredSeeded();
+      toast(`${count} seeded users deleted ✓`, 'info');
+    }); return;
+  }
+
+  if (action === 'delete-seeded') {
+    const name = btn.dataset.name || 'this seeded user';
+    confirm_({ title: `Delete ${esc(name)}?`, msg: 'Removes this demo account permanently.', danger: true }, async () => {
+      btn.disabled = true;
+      const { deleteSeededUser } = await import('./supabase.js');
+      const { error } = await deleteSeededUser(id);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      allSeeded = allSeeded.filter(u => u.id !== id);
+      renderFilteredSeeded();
+      toast(`${esc(name)} deleted ✓`, 'info');
+    }); return;
+  }
+
+  if (action === 'hide-seeded' || action === 'show-seeded') {
+    const pausing = action === 'hide-seeded';
+    btn.disabled = true;
+    const { toggleSeededUserPause } = await import('./supabase.js');
+    const { error } = await toggleSeededUserPause(id, pausing);
+    if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+    const u = allSeeded.find(u => u.id === id);
+    if (u) u.is_profile_paused = pausing;
+    renderFilteredSeeded();
+    toast(pausing ? 'Seeded user hidden ✓' : 'Seeded user visible ✓', 'success');
+    return;
+  }
+
   if (action === 'delete-user') {
     const userName = btn.dataset.name || 'this user';
     confirm_({
@@ -546,7 +682,7 @@ function renderUsersTable(users, withActions = false) {
     const examCentreName     = u.exam_center          || '—';
 
     const actions = withActions ? `<td>
-      <div class="adm-actions" style="gap:4px;">
+      <div class="adm-actions" style="gap:4px;flex-wrap:wrap;">
         ${isSuperAdmin
           ? '<span class="adm-pill adm-pill--admin" style="font-size:10px;">⚡ superadmin</span>'
           : `<button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
@@ -558,7 +694,7 @@ function renderUsersTable(users, withActions = false) {
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                Delete
              </button>`
-          : `<span class="adm-pill" style="font-size:10px;opacity:.5;" title="Revoke admin first to delete">Protected</span>`}
+          : `<span class="adm-pill" style="font-size:10px;opacity:.5;" title="Revoke admin first">Protected</span>`}
       </div>
     </td>` : '';
 

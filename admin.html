@@ -36,6 +36,7 @@
       <ul class="adm-nav" id="adm-nav" role="list">
         <li><a href="#dashboard" data-route="dashboard"><span class="adm-nav__icon">📊</span><span>Dashboard</span></a></li>
         <li><a href="#users"     data-route="users"    ><span class="adm-nav__icon">👥</span><span>Users</span></a></li>
+        <li><a href="#seeded"    data-route="seeded"   ><span class="adm-nav__icon">🌱</span><span>Seeded Users</span></a></li>
         <li><a href="#feedback"  data-route="feedback" ><span class="adm-nav__icon">💬</span><span>Feedback</span></a></li>
         <li><a href="#reports"   data-route="reports"  ><span class="adm-nav__icon">🚩</span><span>Reports</span></a></li>
         <li><a href="#exams"     data-route="exams"    ><span class="adm-nav__icon">🎓</span><span>Exams</span></a></li>
@@ -92,6 +93,30 @@
           </div>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Seeded Users -->
+        <section class="adm-panel" id="adm-panel-seeded" data-route="seeded">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:4px;">
+            <h1 class="adm-h1" style="margin:0;">Seeded Users</h1>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:13px;color:var(--adm-text-dim);" id="adm-seeded-visibility-label">Exam centre visibility</span>
+              <label class="adm-toggle" title="Show or hide all seeded users from Find Mates">
+                <input type="checkbox" id="adm-seeded-visibility-toggle" checked />
+                <span class="adm-toggle__track"></span>
+              </label>
+            </div>
+          </div>
+          <p class="adm-sub">Demo accounts for district discovery. Toggle shows/hides all from Find Mates.</p>
+          <div class="adm-toolbar">
+            <input type="search" id="adm-seeded-search" class="adm-search" placeholder="Search by name or district…" />
+            <select id="adm-seeded-filter-district" class="adm-filter">
+              <option value="">All districts</option>
+            </select>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card__body" id="adm-seeded-list"><div class="adm-empty">Loading…</div></div>
           </div>
         </section>
 

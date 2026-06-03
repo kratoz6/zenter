@@ -59,6 +59,7 @@ export async function getAdminStats() {
     return predicate ? predicate(q) : q;
   };
   const [usersR, activeR, conxR, feedbackR, reportsR] = await Promise.all([
+    // seeded_users is now a separate table — users table contains only real users
     headCount('users'),
     headCount('users', q => q.or('is_profile_paused.is.null,is_profile_paused.eq.false')),
     headCount('connections', q => q.eq('status', 'accepted')),
@@ -78,13 +79,14 @@ export async function getAdminStats() {
 }
 
 /** Recent users list for the admin Users section — includes moderation fields. */
-export function getRecentUsers(limit = 50) {
-  return query(
-    from('users')
-      .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, created_at')
-      .order('created_at', { ascending: false })
-      .limit(limit)
-  );
+export function getRecentUsers(limit = 50, { seededOnly = false, excludeSeeded = false } = {}) {
+  let q = from('users')
+    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (seededOnly)    q = q.eq('is_seeded_user', true);
+  if (excludeSeeded) q = q.or('is_seeded_user.is.null,is_seeded_user.eq.false');
+  return query(q);
 }
 
 /** Recent feedback with resolution state. */
@@ -185,13 +187,51 @@ export function getAllUsers(examType = 'NEET UG') {
     .or('account_status.is.null,account_status.eq.active');
 
   if (!examType || examType === 'NEET UG') {
-    // Include legacy null-exam_type rows alongside explicit NEET UG rows.
     q = q.or('exam_type.eq.NEET UG,exam_type.is.null');
   } else {
     q = q.eq('exam_type', examType);
   }
 
   return query(q.order('created_at', { ascending: false }));
+}
+
+// ─── Seeded / demo users (separate table) ────────────────────────────────────
+
+/** Fetch active seeded users for the find-mates feed. RLS handles paused/inactive. */
+export function getSeededUsers(examType = 'NEET UG') {
+  let q = from('seeded_users')
+    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, created_at');
+  if (!examType || examType === 'NEET UG') {
+    q = q.or('exam_type.eq.NEET UG,exam_type.is.null');
+  } else {
+    q = q.eq('exam_type', examType);
+  }
+  return query(q.order('created_at', { ascending: false }));
+}
+
+/** Admin — full seeded user list with moderation fields. */
+export function getAllSeededUsers(limit = 200) {
+  return query(
+    from('seeded_users')
+      .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, travel_mode, stay_plan, bio, profile_completed, is_profile_paused, account_status, created_at')
+      .order('exam_centre_district', { ascending: true })
+      .limit(limit)
+  );
+}
+
+/** Delete a single seeded user. */
+export function deleteSeededUser(id) {
+  return query(from('seeded_users').delete().eq('id', id));
+}
+
+/** Delete ALL seeded users. */
+export function deleteAllSeededUsers() {
+  return query(from('seeded_users').delete().neq('id', '00000000-0000-0000-0000-000000000000'));
+}
+
+/** Pause / unpause a seeded user to hide/show them in the feed. */
+export function toggleSeededUserPause(id, paused) {
+  return query(from('seeded_users').update({ is_profile_paused: paused }).eq('id', id));
 }
 
 // Set or clear the is_profile_paused flag for the current user.
@@ -397,6 +437,7 @@ export function getAuditLog(limit = 100) {
 
 /** Admin analytics: richer breakdown queries. */
 export async function getAnalyticsData() {
+  // seeded_users is a separate table — users table is real users only
   const [examR, genderR, districtR, pendingR, connR] = await Promise.all([
     query(from('users').select('exam_type').eq('profile_completed', true)),
     query(from('users').select('gender').eq('profile_completed', true)),
@@ -451,3 +492,6 @@ export function adminSetUserRole(targetId, role, requesterPhone) {
     p_target_id: targetId, p_role: role, p_requester_phone: requesterPhone,
   }));
 }
+
+// adminDeleteAllSeeded and adminHideSeededUser removed — seeded users now live
+// in the seeded_users table. Use deleteAllSeededUsers / toggleSeededUserPause instead.
