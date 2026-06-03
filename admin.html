@@ -36,6 +36,7 @@
       <ul class="adm-nav" id="adm-nav" role="list">
         <li><a href="#dashboard" data-route="dashboard"><span class="adm-nav__icon">📊</span><span>Dashboard</span></a></li>
         <li><a href="#users"     data-route="users"    ><span class="adm-nav__icon">👥</span><span>Users</span></a></li>
+        <li><a href="#seeded"    data-route="seeded"   ><span class="adm-nav__icon">🌱</span><span>Seeded Users</span></a></li>
         <li><a href="#feedback"  data-route="feedback" ><span class="adm-nav__icon">💬</span><span>Feedback</span></a></li>
         <li><a href="#reports"   data-route="reports"  ><span class="adm-nav__icon">🚩</span><span>Reports</span></a></li>
         <li><a href="#exams"     data-route="exams"    ><span class="adm-nav__icon">🎓</span><span>Exams</span></a></li>
@@ -89,15 +90,25 @@
             <input type="search" id="adm-user-search" class="adm-search" placeholder="Search by name or phone…" />
             <select id="adm-user-filter-exam"   class="adm-filter"><option value="">All exams</option><option value="NEET UG">NEET UG</option><option value="NEET PG">NEET PG</option><option value="INICET">INICET</option></select>
             <select id="adm-user-filter-gender" class="adm-filter"><option value="">All genders</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
-            <select id="adm-user-filter-seeded" class="adm-filter">
-              <option value="">All users</option>
-              <option value="real">Real only</option>
-              <option value="seeded">Seeded only</option>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
+          </div>
+        </section>
+
+        <!-- Seeded Users -->
+        <section class="adm-panel" id="adm-panel-seeded" data-route="seeded">
+          <h1 class="adm-h1">Seeded Users</h1>
+          <p class="adm-sub">Demo accounts used for district discovery. Stored separately from real users.</p>
+          <div class="adm-toolbar">
+            <input type="search" id="adm-seeded-search" class="adm-search" placeholder="Search by name or district…" />
+            <select id="adm-seeded-filter-district" class="adm-filter">
+              <option value="">All districts</option>
             </select>
             <button class="adm-btn adm-btn--danger adm-btn--sm" data-action="delete-all-seeded" style="margin-left:auto;">🗑 Delete all seeded</button>
           </div>
           <div class="adm-card">
-            <div class="adm-card__body" id="adm-users-list"><div class="adm-empty">Loading…</div></div>
+            <div class="adm-card__body" id="adm-seeded-list"><div class="adm-empty">Loading…</div></div>
           </div>
         </section>
 

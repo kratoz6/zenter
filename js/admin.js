@@ -4,11 +4,12 @@
 import { requireAdmin, logout } from './auth.js';
 import { formatPhonePretty }    from './utils.js';
 
-const ROUTES = ['dashboard','users','feedback','reports','exams','analytics','settings'];
-const loaded     = new Set();
-let allUsers     = [];
-let allFeedbacks = [];
-let allReports   = [];
+const ROUTES = ['dashboard','users','seeded','feedback','reports','exams','analytics','settings'];
+const loaded      = new Set();
+let allUsers      = [];
+let allSeeded     = [];
+let allFeedbacks  = [];
+let allReports    = [];
 let adminPhone   = '';
 let platformConfig = {};   // { feature_toggles:{}, exam_config:[], global_maintenance:false }
 
@@ -70,6 +71,7 @@ function activateRoute(route) {
 const LOADERS = {
   dashboard:  loadDashboard,
   users:      loadUsers,
+  seeded:     loadSeeded,
   feedback:   loadFeedback,
   reports:    loadReports,
   exams:      loadExams,
@@ -97,7 +99,7 @@ async function loadUsers() {
   allUsers = data;
   renderFilteredUsers();
   const rerender = debounce(renderFilteredUsers, 180);
-  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender','adm-user-filter-seeded']
+  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender']
     .forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
 }
 
@@ -105,17 +107,78 @@ function renderFilteredUsers() {
   const search  = (document.getElementById('adm-user-search')?.value || '').toLowerCase();
   const exam    = document.getElementById('adm-user-filter-exam')?.value    || '';
   const gender  = document.getElementById('adm-user-filter-gender')?.value  || '';
-  const seeded  = document.getElementById('adm-user-filter-seeded')?.value  || '';
   const filtered = allUsers.filter(u => {
     if (search && !`${u.full_name} ${u.phone}`.toLowerCase().includes(search)) return false;
     if (exam   && u.exam_type !== exam)  return false;
     if (gender && u.gender   !== gender) return false;
-    if (seeded === 'seeded' && !u.is_seeded_user) return false;
-    if (seeded === 'real'   &&  u.is_seeded_user) return false;
     return true;
   });
   const el = document.getElementById('adm-users-list');
   el.innerHTML = filtered.length ? renderUsersTable(filtered, true) : emptyState('🔍','No users match filters.');
+}
+
+// ─── Seeded users ─────────────────────────────────────────────────────────────
+
+async function loadSeeded() {
+  const { getAllSeededUsers } = await import('./supabase.js');
+  const { data, error } = await getAllSeededUsers(500);
+  if (error || !data) { document.getElementById('adm-seeded-list').innerHTML = emptyState('⚠️','Could not load seeded users.'); return; }
+  allSeeded = data;
+
+  // Populate district filter
+  const distEl = document.getElementById('adm-seeded-filter-district');
+  if (distEl && distEl.options.length === 1) {
+    const districts = [...new Set(data.map(u => u.exam_centre_district).filter(Boolean))].sort();
+    districts.forEach(d => { const o = document.createElement('option'); o.value = o.textContent = d; distEl.appendChild(o); });
+  }
+
+  renderFilteredSeeded();
+  const rerender = debounce(renderFilteredSeeded, 180);
+  ['adm-seeded-search','adm-seeded-filter-district']
+    .forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
+}
+
+function renderFilteredSeeded() {
+  const search   = (document.getElementById('adm-seeded-search')?.value || '').toLowerCase();
+  const district = document.getElementById('adm-seeded-filter-district')?.value || '';
+  const filtered = allSeeded.filter(u => {
+    if (search   && !`${u.full_name} ${u.exam_centre_district}`.toLowerCase().includes(search)) return false;
+    if (district && u.exam_centre_district !== district) return false;
+    return true;
+  });
+  const el = document.getElementById('adm-seeded-list');
+  el.innerHTML = filtered.length ? renderSeededTable(filtered) : emptyState('🔍','No seeded users match filters.');
+}
+
+function renderSeededTable(users) {
+  const rows = users.map(u => {
+    const paused = u.is_profile_paused;
+    return `<tr>
+      <td>${esc(u.full_name||'—')}</td>
+      <td>${esc(u.gender||'—')}</td>
+      <td style="font-size:11px">${esc(u.exam_centre_district||'—')}</td>
+      <td style="font-size:11px">${esc(u.exam_center||'—')}</td>
+      <td>${esc(u.travel_mode||'—')}</td>
+      <td>${esc(u.stay_plan||'—')}</td>
+      <td><span class="adm-pill adm-pill--${paused?'paused':'active'}">${paused?'Hidden':'Visible'}</span></td>
+      <td>
+        <div class="adm-actions" style="gap:4px;">
+          <button class="adm-btn adm-btn--sm ${paused?'adm-btn--ok':'adm-btn--warn'}"
+            data-action="${paused?'show-seeded':'hide-seeded'}" data-id="${esc(u.id)}">
+            ${paused?'Show':'Hide'}
+          </button>
+          <button class="adm-btn adm-btn--sm adm-btn--danger"
+            data-action="delete-seeded" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'user')}">
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table class="adm-table"><thead><tr>
+    <th>Name</th><th>Gender</th><th>District</th><th>Exam Centre</th>
+    <th>Travel</th><th>Stay</th><th>Status</th><th>Actions</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 async function loadFeedback() {
@@ -452,21 +515,48 @@ document.addEventListener('click', async (e) => {
   }
 
   // ── Delete user ───────────────────────────────────────────────────────────
+  // ── Seeded user actions ───────────────────────────────────────────────────
   if (action === 'delete-all-seeded') {
-    const count = allUsers.filter(u => u.is_seeded_user).length;
+    const count = allSeeded.length;
     confirm_({
       title: `Delete all ${count} seeded users?`,
-      msg: 'This permanently removes all demo/seed accounts. Real users are unaffected. Cannot be undone.',
+      msg: 'This permanently removes all demo accounts from the seeded_users table. Real users are unaffected. Cannot be undone.',
       danger: true,
     }, async () => {
       btn.disabled = true;
-      const { adminDeleteAllSeeded } = await import('./supabase.js');
-      const { error } = await adminDeleteAllSeeded();
+      const { deleteAllSeededUsers } = await import('./supabase.js');
+      const { error } = await deleteAllSeededUsers();
       if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
-      allUsers = allUsers.filter(u => !u.is_seeded_user);
-      renderFilteredUsers();
+      allSeeded = [];
+      renderFilteredSeeded();
       toast(`${count} seeded users deleted ✓`, 'info');
     }); return;
+  }
+
+  if (action === 'delete-seeded') {
+    const name = btn.dataset.name || 'this seeded user';
+    confirm_({ title: `Delete ${esc(name)}?`, msg: 'Removes this demo account permanently.', danger: true }, async () => {
+      btn.disabled = true;
+      const { deleteSeededUser } = await import('./supabase.js');
+      const { error } = await deleteSeededUser(id);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      allSeeded = allSeeded.filter(u => u.id !== id);
+      renderFilteredSeeded();
+      toast(`${esc(name)} deleted ✓`, 'info');
+    }); return;
+  }
+
+  if (action === 'hide-seeded' || action === 'show-seeded') {
+    const pausing = action === 'hide-seeded';
+    btn.disabled = true;
+    const { toggleSeededUserPause } = await import('./supabase.js');
+    const { error } = await toggleSeededUserPause(id, pausing);
+    if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+    const u = allSeeded.find(u => u.id === id);
+    if (u) u.is_profile_paused = pausing;
+    renderFilteredSeeded();
+    toast(pausing ? 'Seeded user hidden ✓' : 'Seeded user visible ✓', 'success');
+    return;
   }
 
   if (action === 'delete-user') {
@@ -565,13 +655,8 @@ function renderUsersTable(users, withActions = false) {
     const examCentreDistrict = u.exam_centre_district || '—';
     const examCentreName     = u.exam_center          || '—';
 
-    const seededBadge = u.is_seeded_user
-      ? `<span class="adm-pill" style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">🌱 seeded</span>`
-      : '';
-
     const actions = withActions ? `<td>
       <div class="adm-actions" style="gap:4px;">
-        ${seededBadge}
         ${isSuperAdmin
           ? '<span class="adm-pill adm-pill--admin" style="font-size:10px;">⚡ superadmin</span>'
           : `<button class="adm-btn adm-btn--sm ${isAdmin ? 'adm-btn--danger' : 'adm-btn--ok'}"
