@@ -30,10 +30,10 @@ const FILTERS = [
   // State/district filters removed — state-level matching is enforced on load.
   // Remaining filters let users narrow within their state.
   { id: 'hm-filter-gender',   key: 'gender',               type: 'select' },
-  { id: 'hm-filter-travel',   key: 'travel_mode',          type: 'select' },
-  { id: 'hm-filter-stay',     key: 'stay_plan',            type: 'select' },
   { id: 'hm-filter-district', key: 'exam_centre_district', type: 'select' },
   { id: 'hm-filter-center',   key: 'exam_center',          type: 'text'   },
+  { id: 'hm-filter-travel',   key: 'travel_mode',          type: 'select' },
+  { id: 'hm-filter-stay',     key: 'stay_plan',            type: 'select' },
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
@@ -93,7 +93,8 @@ async function init() {
 
   // Reflect the user's permanent exam type in the header label.
   const examLabel = document.getElementById('hm-exam-label');
-  if (examLabel) examLabel.textContent = myExamType;
+  const examYearDisplay = { 'NEET UG': 'NEET UG 2026', 'NEET PG': 'NEET PG 2026' };
+  if (examLabel) examLabel.textContent = examYearDisplay[myExamType] || myExamType;
 
   // Load both block directions so neither side sees the other while blocked.
   if (myUserId) {
