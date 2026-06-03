@@ -93,7 +93,8 @@ async function init() {
 
   // Reflect the user's permanent exam type in the header label.
   const examLabel = document.getElementById('hm-exam-label');
-  if (examLabel) examLabel.textContent = myExamType;
+  const examYearDisplay = { 'NEET UG': 'NEET UG 2026', 'NEET PG': 'NEET PG 2026' };
+  if (examLabel) examLabel.textContent = examYearDisplay[myExamType] || myExamType;
 
   // Load both block directions so neither side sees the other while blocked.
   if (myUserId) {
