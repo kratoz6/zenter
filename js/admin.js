@@ -58,6 +58,11 @@ function getRouteFromHash() {
 function wireRouter() {
   window.addEventListener('hashchange', () => activateRoute(getRouteFromHash()));
 }
+function navigateTo(route) {
+  if (!ROUTES.includes(route)) return;
+  location.hash = route;
+  activateRoute(route);
+}
 function activateRoute(route) {
   document.querySelectorAll('.adm-nav a').forEach(a => a.classList.toggle('is-active', a.dataset.route === route));
   document.querySelectorAll('.adm-panel').forEach(p => p.classList.toggle('is-active', p.dataset.route === route));
