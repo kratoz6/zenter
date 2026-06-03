@@ -137,6 +137,28 @@ async function loadSeeded() {
     districts.forEach(d => { const o = document.createElement('option'); o.value = o.textContent = d; distEl.appendChild(o); });
   }
 
+  // Set toggle state based on whether ALL seeded users are paused
+  const toggle = document.getElementById('adm-seeded-visibility-toggle');
+  const label  = document.getElementById('adm-seeded-visibility-label');
+  if (toggle) {
+    const allHidden = data.length > 0 && data.every(u => u.is_profile_paused);
+    toggle.checked = !allHidden; // checked = visible
+    label.textContent = allHidden ? 'Hidden from Find Mates' : 'Visible in Find Mates';
+    toggle.addEventListener('change', async () => {
+      const hide = !toggle.checked;
+      label.textContent = 'Updating…';
+      toggle.disabled = true;
+      const { toggleSeededUserPause } = await import('./supabase.js');
+      // Toggle all seeded users at once
+      await Promise.all(allSeeded.map(u => toggleSeededUserPause(u.id, hide)));
+      allSeeded.forEach(u => u.is_profile_paused = hide);
+      toggle.disabled = false;
+      label.textContent = hide ? 'Hidden from Find Mates' : 'Visible in Find Mates';
+      renderFilteredSeeded();
+      toast(hide ? 'All seeded users hidden from Find Mates ✓' : 'All seeded users visible in Find Mates ✓', 'success');
+    });
+  }
+
   renderFilteredSeeded();
   const rerender = debounce(renderFilteredSeeded, 180);
   ['adm-seeded-search','adm-seeded-filter-district']
