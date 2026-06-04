@@ -305,6 +305,17 @@ const debouncedApply = debounce(applyFilters, 240);
 // ─── Event wiring ─────────────────────────────────────────────────────────────
 
 function wireFilters() {
+  // Mobile filter toggle
+  const toggleBtn = document.getElementById('hm-filter-toggle');
+  const filterAside = document.getElementById('hm-filter-aside');
+  if (toggleBtn && filterAside) {
+    toggleBtn.addEventListener('click', () => {
+      const open = filterAside.classList.toggle('is-open');
+      toggleBtn.setAttribute('aria-expanded', open);
+      toggleBtn.textContent = open ? '✕ Filters' : '⚙ Filters';
+    });
+  }
+
   FILTERS.forEach(({ id, type }) => {
     document.getElementById(id)
       ?.addEventListener(type === 'text' ? 'input' : 'change', debouncedApply);
