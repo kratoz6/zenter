@@ -203,7 +203,7 @@
 .hm-badge--male   { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
 /* Phone verified — pill shape, diagonal / split (bottom-left green, top-right white) */
 .hm-badge--verified {
-  background: linear-gradient(45deg, #15803d 50%, #ffffff 50%);
+  background: linear-gradient(135deg, #15803d 50%, #ffffff 50%);
   border: 1.5px solid #15803d;
   color: #fff;
 }
