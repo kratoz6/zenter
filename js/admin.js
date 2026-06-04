@@ -359,12 +359,20 @@ async function loadSettings() {
           <p style="font-size:13px;color:var(--adm-text-muted);margin:0 0 12px;">
             When enabled, free users are limited to the number of contact reveals below. Plus members get unlimited reveals.
           </p>
-          <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <label style="font-size:13px;font-weight:600;">Free contact reveals:</label>
             <input type="number" id="adm-free-reveal-limit" min="1" max="20"
               value="${platformConfig.free_reveal_limit ?? 2}"
               style="width:64px;padding:6px 8px;border:1px solid var(--adm-border);border-radius:6px;background:var(--adm-surface);color:var(--adm-text);font-size:13px;" />
             <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-save-reveal-limit">Save</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
+            <label style="font-size:13px;font-weight:600;">Price (paise):</label>
+            <input type="number" id="adm-plus-price" min="100" step="100"
+              value="${platformConfig.plus_price_paise ?? 900}"
+              style="width:80px;padding:6px 8px;border:1px solid var(--adm-border);border-radius:6px;background:var(--adm-surface);color:var(--adm-text);font-size:13px;" />
+            <span style="font-size:12px;color:var(--adm-text-dim);">900 = ₹9</span>
+            <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-save-plus-price">Save</button>
           </div>
         </div>
       </div>
@@ -411,8 +419,16 @@ async function loadSettings() {
     toast(`Free reveal limit set to ${val} ✓`, 'success');
   });
 
-  // Wire plus_enabled toggle (handled by data-config="plus_enabled" above)
-  // The generic [data-config] handler below also covers it — ensure config key is passed directly.
+  // Wire Plus price save button
+  document.getElementById('adm-save-plus-price')?.addEventListener('click', async () => {
+    const val = parseInt(document.getElementById('adm-plus-price')?.value, 10);
+    if (!val || val < 100) { toast('Enter a valid price in paise (min 100 = ₹1)', 'error'); return; }
+    const { adminUpdateConfig } = await import('./supabase.js');
+    const { error } = await adminUpdateConfig('plus_price_paise', val, adminPhone);
+    if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+    platformConfig.plus_price_paise = val;
+    toast(`Price set to ₹${val/100} ✓`, 'success');
+  });
 
   // Load announcements list
   await refreshAnnouncementsList();

@@ -513,6 +513,46 @@ export function adminSetPlusMember(targetId, isPlus) {
   return query(from('users').update({ plus_member: isPlus }).eq('id', targetId).select('id').single());
 }
 
+// ─── Razorpay Payment ─────────────────────────────────────────────────────────
+
+const EDGE_BASE = 'https://wppuzqaigtffcpuvjolt.supabase.co/functions/v1';
+
+/** Create a Razorpay order server-side. Returns { order_id, amount, currency, key_id }. */
+export async function createRazorpayOrder(userId) {
+  const resp = await fetch(`${EDGE_BASE}/create-razorpay-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE.anonKey },
+    body: JSON.stringify({ user_id: userId }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Could not create order');
+  return data;
+}
+
+/** Verify payment server-side and grant Plus. */
+export async function verifyRazorpayPayment(orderId, paymentId, signature, userId) {
+  const resp = await fetch(`${EDGE_BASE}/verify-razorpay-payment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE.anonKey },
+    body: JSON.stringify({
+      razorpay_order_id:    orderId,
+      razorpay_payment_id:  paymentId,
+      razorpay_signature:   signature,
+      user_id:              userId,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Payment verification failed');
+  return data;
+}
+
+/** Log an analytics event (fire-and-forget). */
+export function trackEvent(eventName, userId, properties = {}) {
+  return query(
+    from('analytics_events').insert({ event_name: eventName, user_id: userId || null, properties })
+  );
+}
+
 /** Grant or revoke Verified Aspirant status (admit card verified by admin). */
 export function adminSetVerifiedAspirant(targetId, isVerified) {
   const updates = isVerified

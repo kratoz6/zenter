@@ -4,7 +4,7 @@ import { requireOnboarded } from './auth.js';
 import { getAllUsers, getUserByPhone, getMyConnections,
          sendConnectionRequest, respondToRequest, deleteRequest,
          getBlockedUserIds, getBlockedByIds, getSeededUsers,
-         getPlatformConfig, attemptReveal, blockUser,
+         getPlatformConfig, attemptReveal, trackEvent, blockUser,
          deleteConnectionsBetween } from './supabase.js';
 import { debounce } from './utils.js';
 import { toast, setButtonBusy } from './ui.js';
@@ -495,8 +495,14 @@ function showUpgradePrompt(rev) {
     msg.textContent = `You've used all ${rev.limit} of your free contact reveals. Upgrade to Zenter Plus to reveal unlimited contacts.`;
   }
   overlay.classList.add('is-open');
+  trackEvent('upgrade_modal_view', myUserId, { source: 'reveal_limit', reveals_used: rev.reveals_used });
   document.getElementById('hm-upgrade-close')?.addEventListener('click', () => {
     overlay.classList.remove('is-open');
+  }, { once: true });
+
+  // Track CTA click
+  overlay.querySelector('a[href="/plus.html"]')?.addEventListener('click', () => {
+    trackEvent('upgrade_cta_click', myUserId, { source: 'upgrade_dialog' });
   }, { once: true });
 }
 

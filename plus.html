@@ -261,10 +261,10 @@
 
       <!-- CTA -->
       <div class="plus-cta">
-        <button class="hm-btn hm-btn--primary hm-btn--lg" style="width:100%;font-size:17px;" disabled>
+        <button class="hm-btn hm-btn--primary hm-btn--lg" id="hm-buy-plus" style="width:100%;font-size:17px;">
           Get Zenter Plus — ₹9
         </button>
-        <p class="plus-coming">Payment coming soon. We'll notify you when it's live.</p>
+        <p id="hm-plus-pay-status" style="text-align:center;font-size:13px;color:var(--hm-text-muted);margin-top:var(--hm-space-2);min-height:20px;"></p>
         <p style="text-align:center;margin-top:var(--hm-space-3);">
           <a href="/dashboard.html" style="color:var(--hm-primary);font-size:14px;font-weight:600;">← Back to Find Mates</a>
         </p>
@@ -275,5 +275,91 @@
 
   <div data-include="footer"></div>
   <script type="module" src="/js/app.js"></script>
+  <!-- Razorpay checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script type="module">
+    import { requireOnboarded } from '/js/auth.js';
+    import { getUserByPhone }   from '/js/supabase.js';
+    import { createRazorpayOrder, verifyRazorpayPayment, trackEvent } from '/js/supabase.js';
+
+    const btn    = document.getElementById('hm-buy-plus');
+    const status = document.getElementById('hm-plus-pay-status');
+
+    async function init() {
+      const firebaseUser = await requireOnboarded();
+      if (!firebaseUser) return;
+
+      const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
+      if (!me) return;
+
+      // Already Plus — update button
+      if (me.plus_member) {
+        btn.disabled = true;
+        btn.textContent = '⭐ You are already Zenter Plus!';
+        btn.style.background = '#16a34a';
+        return;
+      }
+
+      // Track page view
+      trackEvent('upgrade_modal_view', me.id, { source: 'plus_page' });
+
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        status.textContent = 'Creating order…';
+        trackEvent('upgrade_cta_click', me.id);
+
+        try {
+          const order = await createRazorpayOrder(me.id);
+
+          const options = {
+            key:         order.key_id,
+            amount:      order.amount,
+            currency:    order.currency,
+            name:        'Zenter',
+            description: 'Zenter Plus — NEET UG 2026',
+            order_id:    order.order_id,
+            prefill: { contact: firebaseUser.phoneNumber },
+            theme: { color: '#FF6B35' },
+            modal: {
+              ondismiss: () => {
+                btn.disabled = false;
+                status.textContent = '';
+                trackEvent('payment_failure', me.id, { reason: 'dismissed' });
+              }
+            },
+            handler: async (response) => {
+              status.textContent = 'Verifying payment…';
+              try {
+                await verifyRazorpayPayment(
+                  response.razorpay_order_id,
+                  response.razorpay_payment_id,
+                  response.razorpay_signature,
+                  me.id
+                );
+                // Success!
+                btn.textContent = '⭐ Welcome to Zenter Plus!';
+                btn.style.background = '#16a34a';
+                status.textContent = 'Payment successful! Redirecting…';
+                setTimeout(() => { window.location.href = '/dashboard.html'; }, 1800);
+              } catch (err) {
+                status.textContent = '⚠️ Verification failed. Please contact support@zenter.in';
+                btn.disabled = false;
+              }
+            },
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+          status.textContent = '';
+
+        } catch (err) {
+          status.textContent = '⚠️ ' + (err.message || 'Something went wrong. Please try again.');
+          btn.disabled = false;
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
 </body>
 </html>
