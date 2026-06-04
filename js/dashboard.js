@@ -644,7 +644,7 @@ function requestCard(user, connectionId) {
           <p class="hm-mate__name">${esc(user.full_name)}</p>
           <div class="hm-mate__badges">
             ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
-            <span class="hm-badge hm-badge--verified">✓ Verified</span>
+            <span class="hm-badge ${user.is_verified_aspirant ? 'hm-badge--verified-full' : 'hm-badge--verified'}" title="${user.is_verified_aspirant ? 'Admit card verified' : 'Phone verified'}">✓ Verified</span>
             ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>
@@ -730,6 +730,13 @@ function populateModal(user) {
   // Gap 4: Plus badge in modal
   const plusBadgeEl = document.getElementById('hm-modal-plus-badge');
   if (plusBadgeEl) plusBadgeEl.hidden = !user.plus_member;
+
+  // Two-state verified badge in modal
+  const verifiedBadgeEl = document.getElementById('hm-modal-verified-badge');
+  if (verifiedBadgeEl) {
+    verifiedBadgeEl.className = `hm-badge ${user.is_verified_aspirant ? 'hm-badge--verified-full' : 'hm-badge--verified'}`;
+    verifiedBadgeEl.title = user.is_verified_aspirant ? 'Admit card verified' : 'Phone verified';
+  }
 
   // Reset phone + reveal section
   const phoneEl  = document.getElementById('hm-modal-phone');
@@ -887,7 +894,7 @@ function mateCard(user, idx) {
             ${user.gender
               ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>`
               : ''}
-            <span class="hm-badge hm-badge--verified">✓ Verified</span>
+            <span class="hm-badge ${user.is_verified_aspirant ? 'hm-badge--verified-full' : 'hm-badge--verified'}" title="${user.is_verified_aspirant ? 'Admit card verified' : 'Phone verified'}">✓ Verified</span>
             ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>

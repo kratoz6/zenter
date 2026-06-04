@@ -598,6 +598,26 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
+  // ── Verify / Unverify Aspirant (admit card) ──────────────────────────────
+  if (action === 'verify-aspirant' || action === 'unverify-aspirant') {
+    const verifying = action === 'verify-aspirant';
+    const userName  = btn.dataset.name || 'this user';
+    confirm_({
+      title: verifying ? `Verify admit card for ${esc(userName)}?` : `Remove verification for ${esc(userName)}?`,
+      msg:   verifying ? 'Grants full green Verified badge — confirm admit card has been checked.' : 'Downgrades to phone-only verification.',
+      danger: !verifying,
+    }, async () => {
+      btn.disabled = true;
+      const { adminSetVerifiedAspirant } = await import('./supabase.js');
+      const { error } = await adminSetVerifiedAspirant(id, verifying);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.is_verified_aspirant = verifying;
+      renderFilteredUsers();
+      toast(verifying ? `✓ Admit card verified for ${esc(userName)} ✓` : `Verification removed ✓`, 'success');
+    }); return;
+  }
+
   // ── Delete user ───────────────────────────────────────────────────────────
   // ── Seeded user actions ───────────────────────────────────────────────────
   if (action === 'delete-all-seeded') {
@@ -751,6 +771,10 @@ function renderUsersTable(users, withActions = false) {
           data-action="${u.plus_member ? 'revoke-plus' : 'grant-plus'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
           ${u.plus_member ? 'Revoke Plus' : 'Grant Plus'}
         </button>
+        <button class="adm-btn adm-btn--sm ${u.is_verified_aspirant ? 'adm-btn--warn' : 'adm-btn--ok'}"
+          data-action="${u.is_verified_aspirant ? 'unverify-aspirant' : 'verify-aspirant'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+          ${u.is_verified_aspirant ? 'Unverify' : 'Verify admit'}
+        </button>
         ${!isPrivileged
           ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
@@ -777,6 +801,11 @@ function renderUsersTable(users, withActions = false) {
           ? '<span class="adm-pill" style="background:#fef9c3;color:#854d0e;border:1px solid #fef08a;">⭐ Plus</span>'
           : '<span style="font-size:11px;color:var(--adm-text-dim);">Free</span>'}
       </td>
+      <td>
+        ${u.is_verified_aspirant
+          ? '<span class="adm-pill" style="background:#16a34a;color:#fff;">✓ Verified</span>'
+          : '<span class="adm-pill" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;">~ Phone only</span>'}
+      </td>
       <td><span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span></td>
       <td style="font-size:11px">${esc(fmtDate(u.created_at))}</td>
       ${actions}
@@ -786,7 +815,7 @@ function renderUsersTable(users, withActions = false) {
   return `<table class="adm-table"><thead><tr>
     <th>Name</th><th>Phone</th><th>Gender</th><th>Exam</th>
     <th>Home Location</th><th>Exam Centre</th>
-    <th>Role</th><th>Plus</th><th>Status</th><th>Joined</th>${ah}
+    <th>Role</th><th>Plus</th><th>Verified</th><th>Status</th><th>Joined</th>${ah}
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 

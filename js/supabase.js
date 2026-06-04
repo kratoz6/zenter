@@ -81,7 +81,7 @@ export async function getAdminStats() {
 /** Recent users list for the admin Users section — includes moderation fields. */
 export function getRecentUsers(limit = 50, { seededOnly = false, excludeSeeded = false } = {}) {
   let q = from('users')
-    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, plus_member, contact_reveals_used, created_at')
+    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, plus_member, contact_reveals_used, is_verified_aspirant, created_at')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (seededOnly)    q = q.eq('is_seeded_user', true);
@@ -159,7 +159,7 @@ export function getProfileByPhone(phone) {
         'id, phone, full_name, gender, state, district, ' +
         'exam_centre_state, exam_centre_district, exam_center, exam_type, ' +
         'college, travel_mode, stay_plan, bio, ' +
-        'profile_completed, is_profile_paused, plus_member, contact_reveals_used, created_at'
+        'profile_completed, is_profile_paused, plus_member, contact_reveals_used, is_verified_aspirant, created_at'
       )
       .eq('phone', phone)
       .maybeSingle()
@@ -180,7 +180,7 @@ export function upsertUser(payload) {
 //   - Any other examType: strict equality — segregates NEET PG etc.
 export function getAllUsers(examType = 'NEET UG') {
   let q = from('users')
-    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, plus_member, created_at')
+    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, plus_member, is_verified_aspirant, created_at')
     .eq('profile_completed', true)
     .or('is_profile_paused.is.null,is_profile_paused.eq.false')
     // Exclude admin-suspended and admin-banned users from the public feed
@@ -511,4 +511,9 @@ export function attemptReveal(userId) {
 /** Grant or revoke Plus membership (admin). Direct update — plus_member is not role-protected. */
 export function adminSetPlusMember(targetId, isPlus) {
   return query(from('users').update({ plus_member: isPlus }).eq('id', targetId).select('id').single());
+}
+
+/** Grant or revoke Verified Aspirant status (admit card verified by admin). */
+export function adminSetVerifiedAspirant(targetId, isVerified) {
+  return query(from('users').update({ is_verified_aspirant: isVerified }).eq('id', targetId).select('id').single());
 }
