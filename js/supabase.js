@@ -200,7 +200,7 @@ export function getAllUsers(examType = 'NEET UG') {
 /** Fetch active seeded users for the find-mates feed. RLS handles paused/inactive. */
 export function getSeededUsers(examType = 'NEET UG') {
   let q = from('seeded_users')
-    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, created_at');
+    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, is_verified_aspirant, created_at');
   if (!examType || examType === 'NEET UG') {
     q = q.or('exam_type.eq.NEET UG,exam_type.is.null');
   } else {

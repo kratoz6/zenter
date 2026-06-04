@@ -819,12 +819,16 @@ function renderUsersTable(users, withActions = false) {
       </td>
       <td style="font-size:12px;">
         ${u.is_verified_aspirant
-          ? '<span class="adm-pill" style="background:#16a34a;color:#fff;">✓ Verified</span>'
+          ? `<span class="adm-pill" style="background:#16a34a;color:#fff;">✓ Verified</span>
+             ${u.nta_application_number
+               ? `<div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number)}</div>`
+               : ''}`
           : u.verification_requested
             ? `<span class="adm-pill" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">⏳ Pending</span>
-               <div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;">${esc(u.nta_application_number||'')}</div>`
+               <div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number||'')}</div>`
             : u.verification_rejected
-              ? '<span class="adm-pill" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">✗ Rejected</span>'
+              ? `<span class="adm-pill" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">✗ Rejected</span>
+                 ${u.nta_application_number ? `<div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number)}</div>` : ''}`
               : '<span style="color:var(--adm-text-dim);">Phone only</span>'}
       </td>
       <td><span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span></td>
