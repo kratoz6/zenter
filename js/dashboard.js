@@ -152,14 +152,18 @@ async function loadData() {
 
   if (usersRes.error) { renderError(usersRes.error.message); return; }
 
+  // Global seeded visibility toggle — admin can turn all seeded users off
+  const seededUsersVisible = (cfgRes.data || [])
+    .find(r => r.key === 'seeded_users_visible')?.value !== false;
+
   // Check if exam centre should be shown on seeded user cards
   const showSeededExamCentre = (cfgRes.data || [])
     .find(r => r.key === 'seeded_exam_centre_visible')?.value !== false;
 
-  // Strip exam_center from seeded users if admin toggled it off
-  const seededUsers = (seededRes.data || []).map(u =>
-    showSeededExamCentre ? u : { ...u, exam_center: null }
-  );
+  // Apply both toggles
+  const seededUsers = seededUsersVisible
+    ? (seededRes.data || []).map(u => showSeededExamCentre ? u : { ...u, exam_center: null })
+    : [];
 
   // Merge real + seeded users into one combined list for the feed
   const combined = [...(usersRes.data || []), ...seededUsers];
