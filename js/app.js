@@ -42,13 +42,13 @@ async function bootstrap() {
 }
 
 // ─── Back button ─────────────────────────────────────────────────────────────
-// Pages that show ← Back in the navbar. Add more here when confirmed.
-const BACK_BUTTON_PAGES = ['faq'];
+// Pages where ← Back is hidden (no meaningful "back" concept).
+const NO_BACK_PAGES = ['login', 'onboarding'];
 
 function wireBackButton(route) {
   const btn = document.getElementById('hm-nav-back');
   if (!btn) return;
-  if (BACK_BUTTON_PAGES.includes(route)) {
+  if (!NO_BACK_PAGES.includes(route)) {
     btn.hidden = false;
   }
 }
