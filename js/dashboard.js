@@ -4,7 +4,7 @@ import { requireOnboarded } from './auth.js';
 import { getAllUsers, getUserByPhone, getMyConnections,
          sendConnectionRequest, respondToRequest, deleteRequest,
          getBlockedUserIds, getBlockedByIds, getSeededUsers,
-         getPlatformConfig, blockUser,
+         getPlatformConfig, attemptReveal, trackEvent, flagRapidReveal, blockUser,
          deleteConnectionsBetween } from './supabase.js';
 import { debounce } from './utils.js';
 import { toast, setButtonBusy } from './ui.js';
@@ -20,6 +20,7 @@ let lastFocusedCard = null;
 let modalUser       = null;
 let myUserId              = null;
 let myExamType            = null;   // permanent — set during onboarding
+let myExamTypeForFeed     = null;   // null for admins (all exams), else same as myExamType
 let myExamCentreState     = null;   // state-level matching boundary
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
@@ -55,12 +56,12 @@ async function init() {
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
   myUserId             = me?.id        || null;
   myExamType           = me?.exam_type || 'NEET UG';
-  // Admins see all exam types — pass null to getAllUsers to fetch everyone
-  const myExamTypeForFeed = (myRole === 'admin' || myRole === 'superadmin') ? null : myExamType;
   // Match only on exam_centre_state — where the exam is held.
   // Home location (state/district) is irrelevant for matching.
   // Admins/superadmins bypass the filter so they can see all users.
   const myRole = me?.role || 'user';
+  // Admins see all exam types — pass null to getAllUsers to fetch everyone
+  myExamTypeForFeed    = (myRole === 'admin' || myRole === 'superadmin') ? null : myExamType;
   myExamCentreState = (myRole === 'admin' || myRole === 'superadmin')
     ? null
     : (me?.exam_centre_state || null);
@@ -305,6 +306,17 @@ const debouncedApply = debounce(applyFilters, 240);
 // ─── Event wiring ─────────────────────────────────────────────────────────────
 
 function wireFilters() {
+  // Mobile filter toggle
+  const toggleBtn = document.getElementById('hm-filter-toggle');
+  const filterAside = document.getElementById('hm-filter-aside');
+  if (toggleBtn && filterAside) {
+    toggleBtn.addEventListener('click', () => {
+      const open = filterAside.classList.toggle('is-open');
+      toggleBtn.setAttribute('aria-expanded', open);
+      toggleBtn.textContent = open ? '✕ Filters' : '⚙ Filters';
+    });
+  }
+
   FILTERS.forEach(({ id, type }) => {
     document.getElementById(id)
       ?.addEventListener(type === 'text' ? 'input' : 'change', debouncedApply);
@@ -453,6 +465,16 @@ function doReveal() {
   if (!modalUser?.phone) return;
   const phone  = modalUser.phone;
   const waNum  = phone.replace(/\D/g, '');
+
+  // Rapid reveal detection — flag if 2 reveals happen within 60 seconds
+  const RAPID_WINDOW_MS = 60_000;
+  const now = Date.now();
+  const lastReveal = parseInt(sessionStorage.getItem('ztr_last_reveal') || '0', 10);
+  if (lastReveal && (now - lastReveal) < RAPID_WINDOW_MS && myUserId) {
+    flagRapidReveal(myUserId); // fire-and-forget
+    trackEvent('suspicious_rapid_reveal', myUserId, { gap_ms: now - lastReveal });
+  }
+  sessionStorage.setItem('ztr_last_reveal', String(now));
 
   const phoneEl   = document.getElementById('hm-modal-phone');
   const revealEl  = document.getElementById('hm-modal-contact-reveal');
