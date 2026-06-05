@@ -43,7 +43,7 @@ async function bootstrap() {
 
 // ─── Back button ─────────────────────────────────────────────────────────────
 // Pages where ← Back is hidden (no meaningful "back" concept).
-const NO_BACK_PAGES = ['login', 'onboarding'];
+const NO_BACK_PAGES = ['login', 'onboarding', 'dashboard'];
 
 function wireBackButton(route) {
   const btn = document.getElementById('hm-nav-back');
