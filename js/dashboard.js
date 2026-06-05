@@ -4,7 +4,7 @@ import { requireOnboarded } from './auth.js';
 import { getAllUsers, getUserByPhone, getMyConnections,
          sendConnectionRequest, respondToRequest, deleteRequest,
          getBlockedUserIds, getBlockedByIds, getSeededUsers,
-         getPlatformConfig, blockUser,
+         getPlatformConfig, attemptReveal, trackEvent, flagRapidReveal, blockUser,
          deleteConnectionsBetween } from './supabase.js';
 import { debounce } from './utils.js';
 import { toast, setButtonBusy } from './ui.js';
@@ -464,6 +464,16 @@ function doReveal() {
   if (!modalUser?.phone) return;
   const phone  = modalUser.phone;
   const waNum  = phone.replace(/\D/g, '');
+
+  // Rapid reveal detection — flag if 2 reveals happen within 60 seconds
+  const RAPID_WINDOW_MS = 60_000;
+  const now = Date.now();
+  const lastReveal = parseInt(sessionStorage.getItem('ztr_last_reveal') || '0', 10);
+  if (lastReveal && (now - lastReveal) < RAPID_WINDOW_MS && myUserId) {
+    flagRapidReveal(myUserId); // fire-and-forget
+    trackEvent('suspicious_rapid_reveal', myUserId, { gap_ms: now - lastReveal });
+  }
+  sessionStorage.setItem('ztr_last_reveal', String(now));
 
   const phoneEl   = document.getElementById('hm-modal-phone');
   const revealEl  = document.getElementById('hm-modal-contact-reveal');
