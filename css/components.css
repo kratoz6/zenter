@@ -46,8 +46,11 @@
    NAVBAR
 ============================================================ */
 .hm-navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   z-index: 1030;
   background: rgba(255, 255, 255, 0.78);
   /* backdrop-filter is on ::before, NOT here.
