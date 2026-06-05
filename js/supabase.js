@@ -509,6 +509,22 @@ export function adminSetUserRole(targetId, role, requesterPhone) {
 // adminDeleteAllSeeded and adminHideSeededUser removed — seeded users now live
 // in the seeded_users table. Use deleteAllSeededUsers / toggleSeededUserPause instead.
 
+// ─── Contact reveal ───────────────────────────────────────────────────────────
+
+/** Increment contact_reveals_used counter atomically. Returns updated row. */
+export function attemptReveal(userId) {
+  return query(supabase.rpc('increment_reveal_count', { p_user_id: userId }));
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+/** Log an analytics event (fire-and-forget). */
+export function trackEvent(eventName, userId, properties = {}) {
+  return query(
+    from('analytics_events').insert({ event_name: eventName, user_id: userId || null, properties })
+  );
+}
+
 // ─── Suspicious activity ──────────────────────────────────────────────────────
 
 /** Flag a user as rapidly revealing contacts (called from dashboard after detection). */

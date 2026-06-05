@@ -20,6 +20,7 @@ let lastFocusedCard = null;
 let modalUser       = null;
 let myUserId              = null;
 let myExamType            = null;   // permanent — set during onboarding
+let myExamTypeForFeed     = null;   // null for admins (all exams), else same as myExamType
 let myExamCentreState     = null;   // state-level matching boundary
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
@@ -55,12 +56,12 @@ async function init() {
   const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
   myUserId             = me?.id        || null;
   myExamType           = me?.exam_type || 'NEET UG';
-  // Admins see all exam types — pass null to getAllUsers to fetch everyone
-  const myExamTypeForFeed = (myRole === 'admin' || myRole === 'superadmin') ? null : myExamType;
   // Match only on exam_centre_state — where the exam is held.
   // Home location (state/district) is irrelevant for matching.
   // Admins/superadmins bypass the filter so they can see all users.
   const myRole = me?.role || 'user';
+  // Admins see all exam types — pass null to getAllUsers to fetch everyone
+  myExamTypeForFeed    = (myRole === 'admin' || myRole === 'superadmin') ? null : myExamType;
   myExamCentreState = (myRole === 'admin' || myRole === 'superadmin')
     ? null
     : (me?.exam_centre_state || null);
