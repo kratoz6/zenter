@@ -174,6 +174,8 @@ async function openChat(convId) {
         <span class="hm-chat-header__name">${esc(conv.otherUser.full_name)}</span>
         <button class="hm-btn hm-btn--soft hm-btn--sm hm-chat-header__exchange"
                 id="hm-exchange-btn">📞 Exchange Contact</button>
+        <button class="hm-btn hm-btn--ghost hm-btn--sm" id="hm-chat-block-btn"
+                style="color:var(--hm-danger);font-size:12px;" data-user-id="${esc(conv.otherId)}">🚫 Block</button>
       </div>
       <div id="hm-exchange-banner" class="hm-exchange-banner" hidden></div>
       <div class="hm-chat-messages" id="hm-chat-messages">
@@ -213,6 +215,19 @@ async function openChat(convId) {
 
   // Wire exchange contact button
   document.getElementById('hm-exchange-btn')?.addEventListener('click', () => handleExchangeRequest(convId));
+
+  // Wire block button — dispatches to dashboard.js block modal
+  document.getElementById('hm-chat-block-btn')?.addEventListener('click', () => {
+    const userId = conv.otherId;
+    // Trigger the block modal via the same data-conn-action system
+    const evt = new MouseEvent('click', { bubbles: true });
+    const fakeBtn = document.createElement('button');
+    fakeBtn.dataset.connAction = 'block';
+    fakeBtn.dataset.userId = userId;
+    document.body.appendChild(fakeBtn);
+    fakeBtn.dispatchEvent(evt);
+    fakeBtn.remove();
+  });
 
   // Load messages
   await loadMessages(convId);
