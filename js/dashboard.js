@@ -184,7 +184,7 @@ async function loadData() {
 
   // Apply both toggles
   const seededUsers = seededUsersVisible
-    ? (seededRes.data || []).map(u => showSeededExamCentre ? u : { ...u, exam_center: null })
+    ? (seededRes.data || []).map(u => ({ ...(showSeededExamCentre ? u : { ...u, exam_center: null }), __seeded: true }))
     : [];
 
   // Merge real + seeded users into one combined list for the feed
@@ -435,6 +435,16 @@ async function doConnect(userId) {
   if (myUserId === userId) return; // prevent self-connection
   const existing = Relationships.get(userId);
   if (existing.status !== REL.NONE) return;
+
+  // Seeded users live in a separate table — no FK in connections.
+  // Simulate a pending request so the UI updates without hitting the DB.
+  const targetUser = allUsers.find(u => u.id === userId);
+  if (targetUser?.__seeded) {
+    Relationships.set(userId, { status: REL.PENDING_OUT, role: 'sender', connectionId: `seeded-${userId}` });
+    renderModalActions();
+    toast('Request sent!', { variant: 'success' });
+    return;
+  }
 
   // Optimistic update — connectionId filled in after server confirms.
   Relationships.set(userId, { status: REL.PENDING_OUT, role: 'sender', connectionId: null });
