@@ -141,7 +141,28 @@
         <!-- Seeded Requests -->
         <section class="adm-panel" id="adm-panel-seeded-requests" data-route="seeded-requests">
           <h1 class="adm-h1">Seeded Requests</h1>
-          <p class="adm-sub">Real users who sent connection requests to seeded profiles. Accept to enable chat.</p>
+
+          <!-- Send request FROM seeded user TO real user -->
+          <div class="adm-card" style="margin-bottom:var(--hm-space-4);">
+            <div class="adm-card__header">Send request as seeded user</div>
+            <div class="adm-card__body" style="padding:16px 20px;">
+              <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:140px;">
+                  <label style="font-size:12px;font-weight:600;color:var(--adm-text-muted);display:block;margin-bottom:4px;">From (Seeded)</label>
+                  <select id="adm-seeded-sender" class="adm-filter" style="width:100%;"></select>
+                </div>
+                <div style="font-size:18px;padding-bottom:6px;">→</div>
+                <div style="flex:1;min-width:140px;">
+                  <label style="font-size:12px;font-weight:600;color:var(--adm-text-muted);display:block;margin-bottom:4px;">To (Real User)</label>
+                  <select id="adm-real-receiver" class="adm-filter" style="width:100%;"></select>
+                </div>
+                <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-send-seeded-request" style="padding-bottom:7px;">Send Request</button>
+              </div>
+              <p id="adm-seeded-send-status" style="font-size:12px;margin-top:8px;min-height:18px;"></p>
+            </div>
+          </div>
+
+          <p class="adm-sub">Manage connection requests involving seeded profiles.</p>
           <div class="adm-card">
             <div class="adm-card__body" id="adm-seeded-requests"><div class="adm-empty">Loading…</div></div>
           </div>

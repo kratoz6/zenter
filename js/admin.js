@@ -201,53 +201,132 @@ async function loadSeededRequests() {
   const el = document.getElementById('adm-seeded-requests');
   if (!el) return;
 
-  const { query: q, from: f, getSeededPendingRequests, getMyConversations, sendMessage, adminAcceptSeededRequest, createConversation } = await import('./supabase.js');
+  const { query: q, from: f, sendMessage, adminAcceptSeededRequest, createConversation, sendSeededConnectionRequest } = await import('./supabase.js');
 
-  // Get ALL connections involving seeded users (pending + accepted)
-  const { data: allSeededIds } = await q(f('seeded_users').select('id'));
+  // Get ALL seeded users and real users for dropdowns + table
+  const { data: allSeededIds } = await q(f('seeded_users').select('id, full_name'));
   const seededIdSet = new Set((allSeededIds || []).map(s => s.id));
 
-  const { data: allConns } = await q(
-    f('connections')
-      .select('id, sender_id, receiver_id, status, created_at')
-      .in('receiver_id', [...seededIdSet])
-      .order('created_at', { ascending: false })
+  // Populate dropdowns
+  const seededSelect = document.getElementById('adm-seeded-sender');
+  const realSelect = document.getElementById('adm-real-receiver');
+  if (seededSelect && seededSelect.options.length === 0) {
+    (allSeededIds || []).sort((a, b) => a.full_name.localeCompare(b.full_name)).forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = u.full_name;
+      seededSelect.appendChild(o);
+    });
+  }
+  if (realSelect && realSelect.options.length === 0) {
+    const { data: realUsers } = await q(
+      f('users').select('id, full_name, phone').eq('profile_completed', true).order('full_name')
+    );
+    (realUsers || []).forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = `${u.full_name} (${u.phone || ''})`;
+      realSelect.appendChild(o);
+    });
+  }
+
+  // Wire send request button
+  const sendBtn = document.getElementById('adm-send-seeded-request');
+  const sendStatus = document.getElementById('adm-seeded-send-status');
+  if (sendBtn && !sendBtn.dataset.wired) {
+    sendBtn.dataset.wired = 'true';
+    sendBtn.addEventListener('click', async () => {
+      const seededId = seededSelect?.value;
+      const realId = realSelect?.value;
+      if (!seededId || !realId) { sendStatus.textContent = 'Select both users.'; return; }
+
+      sendBtn.disabled = true;
+      sendStatus.style.color = 'var(--adm-text-muted)';
+      sendStatus.textContent = 'Sending…';
+
+      const { error } = await sendSeededConnectionRequest(seededId, realId);
+      if (error) {
+        sendStatus.style.color = '#dc2626';
+        sendStatus.textContent = error.message?.includes('duplicate') || error.message?.includes('unique')
+          ? '✗ Request already exists between these users.'
+          : '✗ ' + error.message;
+        sendBtn.disabled = false;
+        return;
+      }
+
+      sendStatus.style.color = '#16a34a';
+      sendStatus.textContent = '✓ Request sent! It will appear in the real user\'s Requests tab.';
+      sendBtn.disabled = false;
+      // Refresh table
+      loaded.delete('seeded-requests');
+      loadSeededRequests();
+    });
+  }
+
+  // Get connections where seeded user is EITHER sender or receiver
+  const seededIdArr = [...seededIdSet];
+  const { data: connsAsReceiver } = await q(
+    f('connections').select('id, sender_id, receiver_id, status, created_at')
+      .in('receiver_id', seededIdArr).order('created_at', { ascending: false })
+  );
+  const { data: connsAsSender } = await q(
+    f('connections').select('id, sender_id, receiver_id, status, created_at')
+      .in('sender_id', seededIdArr).order('created_at', { ascending: false })
   );
 
-  if (!allConns?.length) {
-    el.innerHTML = emptyState('✅', 'No requests to seeded users yet.');
+  // Merge and dedupe
+  const connMap = new Map();
+  [...(connsAsReceiver || []), ...(connsAsSender || [])].forEach(c => connMap.set(c.id, c));
+  const allConns = [...connMap.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if (!allConns.length) {
+    el.innerHTML = emptyState('✅', 'No seeded user requests yet.');
     return;
   }
 
   const pending  = allConns.filter(c => c.status === 'pending');
   const accepted = allConns.filter(c => c.status === 'accepted');
 
-  // Fetch user + seeded names
-  const allSenderIds = [...new Set(allConns.map(r => r.sender_id))];
-  const allSeededConnIds = [...new Set(allConns.map(r => r.receiver_id))];
+  // Collect all user IDs (both real and seeded)
+  const allUserIds = [...new Set(allConns.flatMap(r => [r.sender_id, r.receiver_id]))];
+  const allRealIds = allUserIds.filter(id => !seededIdSet.has(id));
+  const allSeededConnIds = allUserIds.filter(id => seededIdSet.has(id));
 
-  const { data: senders } = await q(f('users').select('id, full_name, phone').in('id', allSenderIds));
-  const { data: seededUsers } = await q(f('seeded_users').select('id, full_name').in('id', allSeededConnIds));
+  // Fetch real users and seeded users
+  const { data: realUsers } = allRealIds.length
+    ? await q(f('users').select('id, full_name, phone').in('id', allRealIds))
+    : { data: [] };
+  const { data: seededUsers } = allSeededConnIds.length
+    ? await q(f('seeded_users').select('id, full_name').in('id', allSeededConnIds))
+    : { data: [] };
 
-  const senderMap = Object.fromEntries((senders || []).map(u => [u.id, u]));
+  const realMap = Object.fromEntries((realUsers || []).map(u => [u.id, u]));
   const seededMap = Object.fromEntries((seededUsers || []).map(u => [u.id, u]));
 
+  // Helper: identify which side is seeded
+  const getParties = (r) => {
+    const senderIsSeeded = seededIdSet.has(r.sender_id);
+    const realUser = senderIsSeeded ? (realMap[r.receiver_id] || {}) : (realMap[r.sender_id] || {});
+    const seededUser = senderIsSeeded ? (seededMap[r.sender_id] || {}) : (seededMap[r.receiver_id] || {});
+    const seededId = senderIsSeeded ? r.sender_id : r.receiver_id;
+    const direction = senderIsSeeded ? '← sent by seeded' : '→ sent to seeded';
+    return { realUser, seededUser, seededId, direction, senderIsSeeded };
+  };
+
   // Fetch conversations for accepted connections
-  const { data: convs } = await q(
-    f('conversations')
-      .select('id, connection_id')
-      .in('connection_id', accepted.map(c => c.id))
-  );
+  const { data: convs } = accepted.length
+    ? await q(f('conversations').select('id, connection_id').in('connection_id', accepted.map(c => c.id)))
+    : { data: [] };
   const convByConn = Object.fromEntries((convs || []).map(c => [c.connection_id, c.id]));
 
   // Build pending rows
   const pendingRows = pending.map(r => {
-    const sender = senderMap[r.sender_id] || {};
-    const seeded = seededMap[r.receiver_id] || {};
+    const { realUser, seededUser, direction, senderIsSeeded } = getParties(r);
     const date = new Date(r.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    const dirLabel = senderIsSeeded
+      ? `<span style="font-size:10px;color:var(--adm-text-dim);">seeded → real</span>`
+      : `<span style="font-size:10px;color:var(--adm-text-dim);">real → seeded</span>`;
     return `<tr>
-      <td><strong>${esc(sender.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(sender.phone || '')}</span></td>
-      <td>${esc(seeded.full_name || '—')}</td>
+      <td><strong>${esc(realUser.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(realUser.phone || '')}</span></td>
+      <td>${esc(seededUser.full_name || '—')} ${dirLabel}</td>
       <td><span style="color:#f59e0b;font-weight:600;">Pending</span></td>
       <td>${date}</td>
       <td><button class="adm-btn adm-btn--ok adm-btn--sm" data-accept-seeded="${r.id}" data-sender="${r.sender_id}" data-receiver="${r.receiver_id}">Accept</button></td>
@@ -257,21 +336,23 @@ async function loadSeededRequests() {
 
   // Build accepted rows with message input
   const acceptedRows = accepted.map(r => {
-    const sender = senderMap[r.sender_id] || {};
-    const seeded = seededMap[r.receiver_id] || {};
+    const { realUser, seededUser, seededId, senderIsSeeded } = getParties(r);
     const convId = convByConn[r.id] || '';
     const date = new Date(r.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    const dirLabel = senderIsSeeded
+      ? `<span style="font-size:10px;color:var(--adm-text-dim);">seeded → real</span>`
+      : `<span style="font-size:10px;color:var(--adm-text-dim);">real → seeded</span>`;
     return `<tr>
-      <td><strong>${esc(sender.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(sender.phone || '')}</span></td>
-      <td>${esc(seeded.full_name || '—')}</td>
+      <td><strong>${esc(realUser.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(realUser.phone || '')}</span></td>
+      <td>${esc(seededUser.full_name || '—')} ${dirLabel}</td>
       <td><span style="color:#16a34a;font-weight:600;">Active</span></td>
       <td>${date}</td>
       <td colspan="2">
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" class="adm-search" placeholder="Type as ${esc(seeded.full_name || 'seeded')}…"
-                 data-msg-input="${convId}" data-seeded-id="${r.receiver_id}"
+          <input type="text" class="adm-search" placeholder="Type as ${esc(seededUser.full_name || 'seeded')}…"
+                 data-msg-input="${convId}" data-seeded-id="${seededId}"
                  style="flex:1;padding:6px 10px;font-size:12px;min-width:120px;" maxlength="500" />
-          <button class="adm-btn adm-btn--ok adm-btn--sm" data-msg-send="${convId}" data-seeded-id="${r.receiver_id}">Send</button>
+          <button class="adm-btn adm-btn--ok adm-btn--sm" data-msg-send="${convId}" data-seeded-id="${seededId}">Send</button>
         </div>
       </td>
     </tr>`;

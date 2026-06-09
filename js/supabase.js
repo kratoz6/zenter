@@ -642,6 +642,16 @@ export function adminAcceptSeededRequest(connectionId) {
   );
 }
 
+/** Admin: send a connection request FROM a seeded user TO a real user. */
+export function sendSeededConnectionRequest(seededUserId, realUserId) {
+  return query(
+    from('connections')
+      .insert({ sender_id: seededUserId, receiver_id: realUserId, status: 'pending' })
+      .select('id')
+      .single()
+  );
+}
+
 // ─── Chat System ─────────────────────────────────────────────────────────────
 
 /** Create a conversation when a connection is accepted. Idempotent. */
