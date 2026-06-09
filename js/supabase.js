@@ -509,7 +509,6 @@ export function adminSetUserRole(targetId, role, requesterPhone) {
 // adminDeleteAllSeeded and adminHideSeededUser removed — seeded users now live
 // in the seeded_users table. Use deleteAllSeededUsers / toggleSeededUserPause instead.
 
-<<<<<<< HEAD
 // ─── Zenter Plus — Monetization ───────────────────────────────────────────────
 
 // ─── Contact reveal ───────────────────────────────────────────────────────────
@@ -570,7 +569,6 @@ export function trackEvent(eventName, userId, properties = {}) {
   );
 }
 
-<<<<<<< HEAD
 /** Grant or revoke Verified Aspirant status (admit card verified by admin). */
 export function adminSetVerifiedAspirant(targetId, isVerified) {
   const updates = isVerified
