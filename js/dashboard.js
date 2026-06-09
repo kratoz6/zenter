@@ -241,6 +241,30 @@ async function loadData() {
   renderRequests();
   updateNavBadge();
   applyFilters();
+
+  // Fetch unread chat count for the badge (regardless of which tab is active)
+  if (myUserId) {
+    try {
+      const { getMyConversations } = await import('./supabase.js');
+      const { data: convs } = await getMyConversations(myUserId);
+      let lastRead = {};
+      try { lastRead = JSON.parse(sessionStorage.getItem('hm.chat.lastRead') || '{}'); } catch {}
+      let unread = 0;
+      (convs || []).forEach(c => {
+        const otherId = c.user_a === myUserId ? c.user_b : c.user_a;
+        const lr = lastRead[c.id];
+        if (!lr || new Date(c.updated_at) > new Date(lr)) unread++;
+      });
+      const badge = document.getElementById('hm-chats-tab-badge');
+      if (badge) { badge.textContent = unread; badge.hidden = unread === 0; }
+    } catch {}
+  }
+
+  // If page loaded with a #chats or #chats:userId hash, re-activate now that data is ready
+  const currentHash = parseHash(location.hash);
+  if (currentHash === 'chats' || currentHash === 'connections') {
+    activateTab(currentHash);
+  }
 }
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
