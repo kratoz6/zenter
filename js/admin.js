@@ -298,24 +298,7 @@ async function loadSeededRequests() {
         return;
       }
 
-      const { data: convId } = await createConversation(connId, senderId, receiverId);
-
-      // Auto-send a random greeting
-      if (convId) {
-        const greetings = [
-          'Hi! Are you also going to this centre? 😊',
-          'Hey! Nice to connect. Which city are you travelling from?',
-          'Hi there! Have you booked your travel yet?',
-          'Hello! Glad we matched. Are you looking for a room share?',
-          'Hey! When are you planning to reach the exam city?',
-          'Hi! Do you know anyone else going to our centre?',
-          'Hello! Are you travelling by train or flight?',
-          'Hey! Have you started packing yet? 😄',
-          'Hi! First time at this centre? I\'m a bit nervous honestly.',
-          'Hello! Let\'s coordinate travel — it\'ll be cheaper together!',
-        ];
-        await sendMessage(convId, receiverId, greetings[Math.floor(Math.random() * greetings.length)]);
-      }
+      await createConversation(connId, senderId, receiverId);
 
       toast('Accepted with greeting!', 'success');
       // Refresh to show message input
