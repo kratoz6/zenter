@@ -324,13 +324,17 @@ async function loadSeededRequests() {
     const dirLabel = senderIsSeeded
       ? `<span style="font-size:10px;color:var(--adm-text-dim);">seeded → real</span>`
       : `<span style="font-size:10px;color:var(--adm-text-dim);">real → seeded</span>`;
+    // Only show Accept for "real → seeded" (admin acts as seeded).
+    // "seeded → real" must be accepted by the real user themselves.
+    const actionCell = senderIsSeeded
+      ? `<td><span style="font-size:11px;color:var(--adm-text-dim);">Waiting for user</span></td><td></td>`
+      : `<td><button class="adm-btn adm-btn--ok adm-btn--sm" data-accept-seeded="${r.id}" data-sender="${r.sender_id}" data-receiver="${r.receiver_id}">Accept</button></td><td></td>`;
     return `<tr>
       <td><strong>${esc(realUser.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(realUser.phone || '')}</span></td>
       <td>${esc(seededUser.full_name || '—')} ${dirLabel}</td>
       <td><span style="color:#f59e0b;font-weight:600;">Pending</span></td>
       <td>${date}</td>
-      <td><button class="adm-btn adm-btn--ok adm-btn--sm" data-accept-seeded="${r.id}" data-sender="${r.sender_id}" data-receiver="${r.receiver_id}">Accept</button></td>
-      <td></td>
+      ${actionCell}
     </tr>`;
   }).join('');
 
