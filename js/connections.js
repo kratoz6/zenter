@@ -271,11 +271,10 @@ function connectedCard(user, conn) {
       <div style="padding-top:var(--hm-space-3);border-top:1px solid var(--hm-border);">
         <p style="font-size:var(--hm-text-sm);color:var(--hm-text-muted);margin:0 0 var(--hm-space-2);">📱 ${esc(maskedPhone)}</p>
         <div class="d-flex gap-2 flex-wrap">
-          <a href="/dashboard.html#chats:${esc(user.id)}"
-             class="hm-btn hm-btn--primary hm-btn--sm">💬 Chat</a>
+          <button class="hm-btn hm-btn--primary hm-btn--sm"
+                  data-conn-action="open-chat" data-user-id="${esc(user.id)}">💬 Chat</button>
           <button class="hm-btn hm-btn--soft hm-btn--sm"
-                  data-conn-action="exchange-contact" data-user-id="${esc(user.id)}"
-                  >📞 Call</button>
+                  data-conn-action="call-exchange" data-user-id="${esc(user.id)}">📞 Call</button>
           <button class="hm-modal__block-btn hm-btn hm-btn--ghost hm-btn--sm" type="button"
                   data-conn-action="block" data-user-id="${esc(user.id)}"
                   aria-label="Block ${esc(name)}">🚫 Block</button>

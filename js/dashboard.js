@@ -452,7 +452,7 @@ function wireConnectionActions() {
     const connId = btn.dataset.connId || null;
 
     if (action === 'open-chat') { closeModal(); openChatWithUser(userId); return; }
-    if (action === 'exchange-contact') { openChatWithUser(userId); return; }
+    if (action === 'call-exchange') { showCallExchangePrompt(userId); return; }
     if (action === 'block')  { openBlockModal(userId); return; }
 
     setButtonBusy(btn, true);
@@ -609,6 +609,50 @@ function openChatWithUser(userId) {
   _pendingChatUserId = userId;
   activateTab('chats');
   history.replaceState(null, '', `#chats:${userId}`);
+}
+
+/** Show popup when user clicks Call — must exchange contact first. */
+function showCallExchangePrompt(userId) {
+  const user = allUsers.find(u => u.id === userId) || rawUserMap.get(userId);
+  const name = user?.full_name || 'this user';
+
+  // Reuse a simple overlay
+  let overlay = document.getElementById('hm-call-exchange-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hm-call-exchange-overlay';
+    overlay.className = 'hm-feedback-overlay';
+    overlay.innerHTML = `
+      <div class="hm-feedback-box" style="text-align:center;">
+        <div style="font-size:40px;margin-bottom:var(--hm-space-3);">📞</div>
+        <h3 id="hm-call-exchange-title" style="margin:0 0 var(--hm-space-2);">Exchange Contact First</h3>
+        <p id="hm-call-exchange-msg" class="hm-text-muted" style="font-size:var(--hm-text-sm);margin:0 0 var(--hm-space-4);"></p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button type="button" class="hm-btn hm-btn--ghost hm-btn--sm" id="hm-call-exchange-cancel">Cancel</button>
+          <button type="button" class="hm-btn hm-btn--primary hm-btn--sm" id="hm-call-exchange-go">💬 Go to Chat</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('hm-call-exchange-msg').textContent =
+    `To call ${name}, you need to exchange contact details first. Open the chat and use "Exchange Contact" — both of you must agree before numbers are shared.`;
+
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+
+  const close = () => {
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+
+  document.getElementById('hm-call-exchange-cancel').onclick = close;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); }, { once: true });
+
+  document.getElementById('hm-call-exchange-go').onclick = () => {
+    close();
+    openChatWithUser(userId);
+  };
 }
 
 // ─── Count ────────────────────────────────────────────────────────────────────
