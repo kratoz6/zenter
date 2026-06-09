@@ -6,7 +6,7 @@ import {
   getMyConversations, getMessages, sendMessage,
   subscribeToMessages, canStartChat,
   requestContactExchange, respondContactExchange,
-  getContactExchangeStatus, trackEvent,
+  getContactExchangeStatus, trackEvent, from, query,
 } from './supabase.js';
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -71,11 +71,29 @@ async function loadConversations() {
     return;
   }
 
-  conversations = (data || []).map(conv => {
+  // Collect other user IDs and fetch any missing from DB
+  const convList = (data || []).map(conv => {
     const otherId = conv.user_a === myUserId ? conv.user_b : conv.user_a;
-    const otherUser = allUsersMap.get(otherId) || { full_name: 'User', id: otherId };
-    return { ...conv, otherId, otherUser };
+    return { ...conv, otherId };
   });
+
+  const missingIds = convList
+    .filter(c => !allUsersMap.has(c.otherId))
+    .map(c => c.otherId);
+
+  if (missingIds.length) {
+    const { data: users } = await query(
+      from('users')
+        .select('id, full_name, phone, gender')
+        .in('id', missingIds)
+    );
+    (users || []).forEach(u => allUsersMap.set(u.id, u));
+  }
+
+  conversations = convList.map(conv => ({
+    ...conv,
+    otherUser: allUsersMap.get(conv.otherId) || { full_name: 'User', id: conv.otherId },
+  }));
 
   renderChatList();
   updateTotalUnread();
