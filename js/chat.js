@@ -117,13 +117,15 @@ function renderChatList() {
     const color = avatarColor(conv.otherUser.full_name);
     const isActive = conv.id === activeConvId;
     const timeStr = formatRelativeTime(conv.updated_at);
+    const lastRead = lastReadMap[conv.id];
+    const isUnread = !isActive && (!lastRead || new Date(conv.updated_at) > new Date(lastRead));
 
     return `
-      <div class="hm-chat-item ${isActive ? 'is-active' : ''}"
+      <div class="hm-chat-item ${isActive ? 'is-active' : ''} ${isUnread ? 'is-unread' : ''}"
            data-conv-id="${esc(conv.id)}" role="button" tabindex="0">
         <div class="hm-avatar hm-avatar--sm" style="background:${color};color:#fff;">${initials}</div>
         <div class="hm-chat-item__info">
-          <p class="hm-chat-item__name">${esc(conv.otherUser.full_name)}</p>
+          <p class="hm-chat-item__name">${esc(conv.otherUser.full_name)}${isUnread ? '<span class="hm-chat-unread-dot"></span>' : ''}</p>
           <p class="hm-chat-item__preview" id="hm-chat-preview-${conv.id}"></p>
         </div>
         <span class="hm-chat-item__time">${timeStr}</span>

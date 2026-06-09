@@ -52,6 +52,29 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* Unread state — bold name + green dot */
+.hm-chat-item.is-unread .hm-chat-item__name {
+  font-weight: 700;
+  color: var(--hm-text);
+}
+.hm-chat-item.is-unread .hm-chat-item__preview {
+  font-weight: 600;
+  color: var(--hm-text);
+}
+.hm-chat-item.is-unread .hm-chat-item__time {
+  color: var(--hm-primary);
+  font-weight: 600;
+}
+.hm-chat-unread-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hm-primary);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .hm-chat-item__unread {
   background: var(--hm-primary);
   color: #fff;
