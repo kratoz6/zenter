@@ -439,6 +439,13 @@ async function handleExchangeRequest(convId) {
 function markAsRead(convId) {
   lastReadMap[convId] = new Date().toISOString();
   try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(lastReadMap)); } catch {}
+  // Remove unread styling from this chat item without full re-render
+  const item = document.querySelector(`.hm-chat-item[data-conv-id="${convId}"]`);
+  if (item) {
+    item.classList.remove('is-unread');
+    const dot = item.querySelector('.hm-chat-unread-dot');
+    if (dot) dot.remove();
+  }
   updateTotalUnread();
 }
 
