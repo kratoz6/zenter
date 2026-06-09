@@ -496,5 +496,21 @@ export async function refreshConversations() {
   await loadConversations();
 }
 
+/** Open a specific user's chat by their user ID. Called from connections/modal deep links. */
+export function openChatByUserId(userId) {
+  if (!userId) return;
+  const conv = conversations.find(c => c.otherId === userId);
+  if (conv) {
+    openChat(conv.id);
+  } else {
+    // Conversation may not be loaded yet — retry after a short delay
+    setTimeout(async () => {
+      await loadConversations();
+      const conv2 = conversations.find(c => c.otherId === userId);
+      if (conv2) openChat(conv2.id);
+    }, 500);
+  }
+}
+
 /** Get current unread count without mounting. */
 export { updateTotalUnread };

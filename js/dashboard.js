@@ -30,6 +30,7 @@ let revealedUserIds       = new Set(); // Gap 1: client-side revealed set preven
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
 let chatsLoaded       = false;
+let _pendingChatUserId = null;  // deep-link: open specific user's chat
 let blockedUserIds  = new Set(); // users the current user has blocked
 let blockedByIds    = new Set(); // users who have blocked the current user
 let dataLoaded      = false;     // true once loadData() has hydrated — gates empty states
@@ -252,25 +253,31 @@ function applyInitialTabFromHash() {
   Object.entries(TAB_PANELS()).forEach(([key, el]) => { if (el) el.hidden = key !== tab; });
 }
 
+function parseHash(hash) {
+  const h = (hash || '').slice(1); // remove #
+  // Support #chats:userId deep links
+  if (h.startsWith('chats:')) {
+    _pendingChatUserId = h.split(':')[1] || null;
+    return 'chats';
+  }
+  return VALID_TABS.includes(h) ? h : 'find-mates';
+}
+
 function wireTabs() {
-  // Resolve starting tab from URL hash; default to 'find-mates'
-  const initialHash = location.hash.slice(1);
-  const startTab = VALID_TABS.includes(initialHash) ? initialHash : 'find-mates';
-  if (startTab !== 'find-mates') activateTab(startTab); // HTML already shows find-mates
+  const startTab = parseHash(location.hash);
+  if (startTab !== 'find-mates') activateTab(startTab);
 
   document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = btn.dataset.tab;
       activateTab(t);
-      // 'find-mates' is the canonical default — no hash needed
       history.replaceState(null, '', t === 'find-mates' ? location.pathname : `#${t}`);
     });
   });
 
-  // Respond to hash changes (e.g. nav-bar Connections link while on dashboard)
   window.addEventListener('hashchange', () => {
-    const h = location.hash.slice(1);
-    activateTab(VALID_TABS.includes(h) ? h : 'find-mates');
+    const tab = parseHash(location.hash);
+    activateTab(tab);
   });
 }
 
@@ -299,23 +306,32 @@ async function activateTab(name) {
   if (tab === 'requests') renderRequests();
 
   // Lazy-load Chats on first activation
-  if (tab === 'chats' && !chatsLoaded && myUserId) {
-    chatsLoaded = true;
-    const root = document.getElementById('hm-chats-root');
-    if (root) {
-      // Build a Map of all known users for the chat module
-      const usersMap = new Map();
-      allUsers.forEach(u => usersMap.set(u.id, u));
-      rawUserMap.forEach((u, id) => { if (!usersMap.has(id)) usersMap.set(id, u); });
+  if (tab === 'chats' && myUserId) {
+    if (!chatsLoaded) {
+      chatsLoaded = true;
+      const root = document.getElementById('hm-chats-root');
+      if (root) {
+        const usersMap = new Map();
+        allUsers.forEach(u => usersMap.set(u.id, u));
+        rawUserMap.forEach((u, id) => { if (!usersMap.has(id)) usersMap.set(id, u); });
 
-      const { mountChat } = await import('./chat.js');
-      await mountChat(root, myUserId, usersMap, (unread) => {
-        const badge = document.getElementById('hm-chats-tab-badge');
-        if (badge) {
-          badge.textContent = unread;
-          badge.hidden = unread === 0;
-        }
-      });
+        const { mountChat } = await import('./chat.js');
+        await mountChat(root, myUserId, usersMap, (unread) => {
+          const badge = document.getElementById('hm-chats-tab-badge');
+          if (badge) {
+            badge.textContent = unread;
+            badge.hidden = unread === 0;
+          }
+        });
+      }
+    }
+
+    // Deep-link: open a specific user's chat if pending
+    if (_pendingChatUserId) {
+      const uid = _pendingChatUserId;
+      _pendingChatUserId = null;
+      const { openChatByUserId } = await import('./chat.js');
+      openChatByUserId(uid);
     }
   }
 
@@ -435,7 +451,8 @@ function wireConnectionActions() {
     const userId = btn.dataset.userId;
     const connId = btn.dataset.connId || null;
 
-    if (action === 'open-chat') { closeModal(); activateTab('chats'); return; }
+    if (action === 'open-chat') { closeModal(); openChatWithUser(userId); return; }
+    if (action === 'exchange-contact') { openChatWithUser(userId); return; }
     if (action === 'block')  { openBlockModal(userId); return; }
 
     setButtonBusy(btn, true);
@@ -586,6 +603,13 @@ function showSafetyConsent() {
 }
 
 // doReveal removed — contact exchange happens inside chat only.
+
+/** Navigate to Chats tab and open a specific user's conversation. */
+function openChatWithUser(userId) {
+  _pendingChatUserId = userId;
+  activateTab('chats');
+  history.replaceState(null, '', `#chats:${userId}`);
+}
 
 // ─── Count ────────────────────────────────────────────────────────────────────
 
