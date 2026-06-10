@@ -49,6 +49,22 @@
               <a href="/plus.html" style="font-size:var(--hm-text-xs);color:var(--hm-primary);font-weight:600;">Get Zenter Plus →</a>
             </div>
 
+            <!-- Verified badge callout — hidden once verified -->
+            <div id="hm-verify-callout" style="margin-top:var(--hm-space-4);width:100%;padding:14px 16px;
+                 background:linear-gradient(135deg,#dcfce7,#f0fdf4);border:1px solid #bbf7d0;
+                 border-radius:var(--hm-radius-lg);text-align:left;" hidden>
+              <p style="margin:0 0 4px;font-weight:700;font-size:var(--hm-text-sm);color:#15803d;">
+                ✓ Get the Verified Badge
+              </p>
+              <p style="margin:0 0 10px;font-size:12px;color:#166534;line-height:1.5;">
+                Upload your admit card to earn a green ✓ Verified badge on your profile card.
+                Verified aspirants get more trust and connection requests.
+              </p>
+              <a href="#hm-verification-section" style="font-size:12px;font-weight:600;color:#15803d;text-decoration:underline;">
+                Verify now ↓
+              </a>
+            </div>
+
             <!-- Admit card verification -->
             <div id="hm-verification-section" style="margin-top:var(--hm-space-4);width:100%;text-align:left;" hidden>
               <p style="font-size:var(--hm-text-xs);font-weight:700;color:var(--hm-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Admit Card Verification</p>
@@ -68,7 +84,7 @@
               </div>
               <!-- Not submitted yet OR rejected — show form -->
               <div id="hm-verify-form">
-                <input type="text" id="hm-nta-number" class="hm-input" placeholder="Enter NTA Application Number"
+                <input type="text" id="hm-nta-number" class="hm-input" placeholder="Enter Application Number"
                   style="margin-top:6px;font-size:13px;" maxlength="20" autocomplete="off" />
                 <button type="button" class="hm-btn hm-btn--primary hm-btn--sm hm-btn--block"
                   id="hm-request-verify" style="margin-top:6px;">Request Verification</button>

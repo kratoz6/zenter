@@ -203,6 +203,10 @@ function hydrateAll() {
     if (ntaInput && profileData.nta_application_number) ntaInput.value = profileData.nta_application_number;
   }
 
+  // Show verified badge callout only for non-verified users
+  const callout = document.getElementById('hm-verify-callout');
+  if (callout) callout.hidden = !!profileData.is_verified_aspirant;
+
   // All section fields
   Object.values(SECTIONS).forEach(sec => hydrateSection(sec));
 }
