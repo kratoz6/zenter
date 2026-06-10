@@ -314,12 +314,34 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
+/* Large desktop (1440px+) — spacious layout */
+@media (min-width: 1440px) {
+  .hm-chat-layout { grid-template-columns: 360px 1fr; gap: var(--hm-space-5); }
+  .hm-chat-window { height: calc(100vh - var(--hm-navbar-h) - 160px); min-height: 500px; }
+  .hm-chat-messages { padding: var(--hm-space-5); }
+  .hm-msg { max-width: 60%; }
+}
+
+/* Standard desktop (1024px–1439px) — default layout, no overrides needed */
+
+/* Tablet (769px–1023px) — narrower sidebar */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .hm-chat-layout { grid-template-columns: 240px 1fr; gap: var(--hm-space-3); }
+  .hm-chat-window { height: calc(100vh - var(--hm-navbar-h) - 160px); min-height: 350px; }
+  .hm-chat-item__name { font-size: 13px; }
+  .hm-chat-item__preview { font-size: 11px; }
+  .hm-chat-header__exchange { font-size: 12px; padding: 4px 8px; }
+}
+
+/* Mobile (≤768px) — single column, fullscreen chat */
 @media (max-width: 768px) {
   .hm-chat-layout {
     grid-template-columns: 1fr;
   }
   .hm-chat-layout__sidebar {
     display: block;
+    border: none;
+    padding: var(--hm-space-2);
   }
   /* When a chat is open on mobile, hide sidebar and show back button */
   .hm-chat-layout.has-active-chat .hm-chat-layout__sidebar {
@@ -329,8 +351,10 @@
     display: inline-flex;
   }
   .hm-chat-window {
-    height: calc(100vh - var(--hm-navbar-h) - 100px);
-    max-height: none;
+    height: calc(100vh - var(--hm-navbar-h) - 80px);
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
   .hm-chat-header {
     gap: var(--hm-space-1);
@@ -354,4 +378,16 @@
     padding: 4px 6px !important;
     white-space: nowrap;
   }
+  .hm-chat-messages { padding: var(--hm-space-3); }
+  .hm-msg { max-width: 85%; }
+  .hm-chat-composer { padding: var(--hm-space-2) var(--hm-space-3); }
+  .hm-chat-composer__input { font-size: 16px; } /* prevents iOS zoom on focus */
+}
+
+/* Small mobile (≤390px) — extra compact */
+@media (max-width: 390px) {
+  .hm-chat-item { padding: var(--hm-space-2); gap: var(--hm-space-2); }
+  .hm-chat-item__name { font-size: 13px; }
+  .hm-chat-header__name { font-size: 13px; }
+  .hm-msg { max-width: 90%; font-size: 13px; }
 }
