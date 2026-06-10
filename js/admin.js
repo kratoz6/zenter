@@ -902,6 +902,25 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
+  // ── Reject Aspirant verification request ─────────────────────────────────
+  if (action === 'reject-aspirant') {
+    const userName = btn.dataset.name || 'this user';
+    confirm_({
+      title: `Reject verification for ${esc(userName)}?`,
+      msg:   'Marks the request as rejected. User can resubmit with corrected details.',
+      danger: true,
+    }, async () => {
+      btn.disabled = true;
+      const { adminSetVerifiedAspirant } = await import('./supabase.js');
+      const { error } = await adminSetVerifiedAspirant(id, false);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) { u.is_verified_aspirant = false; u.verification_requested = false; u.verification_rejected = true; }
+      renderFilteredUsers();
+      toast(`Request rejected ✓`, 'success');
+    }); return;
+  }
+
   // ── Verify / Unverify Aspirant (admit card) ──────────────────────────────
   if (action === 'verify-aspirant' || action === 'unverify-aspirant') {
     const verifying = action === 'verify-aspirant';
@@ -1110,6 +1129,12 @@ function renderUsersTable(users, withActions = false) {
           data-action="${u.is_verified_aspirant ? 'unverify-aspirant' : 'verify-aspirant'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
           ${u.is_verified_aspirant ? 'Unverify' : 'Verify admit'}
         </button>
+        ${u.verification_requested && !u.is_verified_aspirant
+          ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
+               data-action="reject-aspirant" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+               Reject
+             </button>`
+          : ''}
         ${!isPrivileged
           ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
