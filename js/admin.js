@@ -1,7 +1,7 @@
 // Zenter Admin Platform — Phase 3: Final Operational Completion.
 // All 7 sections fully implemented. All mutations via SECURITY DEFINER functions.
 
-import { requireAdmin, logout } from './auth.js';
+import { requireAdmin, logout, onAuthChange } from './auth.js';
 import { formatPhonePretty }    from './utils.js';
 
 const ROUTES = ['dashboard','users','seeded','seeded-requests','feedback','reports','exams','analytics','settings'];
@@ -19,6 +19,32 @@ let platformConfig = {};   // { feature_toggles:{}, exam_config:[], global_maint
   const user = await requireAdmin();
   if (!user) return;
   adminPhone = user.phoneNumber || '';
+
+  // Watch for auth changes — if user signs out OR changes to a non-admin,
+  // immediately clear admin UI and redirect (prevents stale data exposure).
+  onAuthChange(async (currentUser) => {
+    if (!currentUser) {
+      // Signed out — clear DOM and redirect
+      document.body.innerHTML = '';
+      window.location.replace('/login.html');
+      return;
+    }
+    if (currentUser.phoneNumber !== adminPhone) {
+      // Different user logged in — verify they're admin
+      try {
+        const { getRoleByPhone } = await import('./supabase.js');
+        const { data: roleRow } = await getRoleByPhone(currentUser.phoneNumber);
+        const isAdmin = roleRow?.role === 'admin' || roleRow?.role === 'superadmin';
+        if (!isAdmin) {
+          document.body.innerHTML = '';
+          window.location.replace('/dashboard.html');
+        }
+      } catch {
+        document.body.innerHTML = '';
+        window.location.replace('/login.html');
+      }
+    }
+  });
 
   document.getElementById('adm-shell').hidden = false;
   document.getElementById('adm-gate')?.classList.add('is-hidden');
