@@ -350,6 +350,19 @@
       const priceOriginal = document.getElementById('hm-price-original');
       const priceFinal    = document.getElementById('hm-price-final');
 
+      // Fetch current price from server (admin-controlled via platform_config)
+      try {
+        const probe = await createRazorpayOrder(me.id, null, true);
+        const price = probe.original_paise / 100;
+        // Update all price displays
+        document.querySelectorAll('.plus-price').forEach(el => {
+          el.innerHTML = `₹${price} <span>/ exam season</span>`;
+        });
+        if (priceFinal) priceFinal.textContent = `₹${price}`;
+        if (priceOriginal) priceOriginal.textContent = `₹${price}`;
+        btn.textContent = `Get Zenter Plus — ₹${price}`;
+      } catch { /* fall back to hardcoded ₹49 in HTML */ }
+
       // Already Plus
       if (me.plus_member) {
         btn.disabled = true;
