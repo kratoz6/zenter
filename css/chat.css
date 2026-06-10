@@ -343,15 +343,31 @@
     border: none;
     padding: var(--hm-space-2);
   }
-  /* When a chat is open on mobile, hide sidebar and show back button */
+  /* When a chat is open on mobile, make it fixed fullscreen — no page scroll */
+  .hm-chat-layout.has-active-chat {
+    position: fixed;
+    top: var(--hm-navbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1020;
+    background: var(--hm-bg);
+    padding: 0;
+    margin: 0;
+  }
   .hm-chat-layout.has-active-chat .hm-chat-layout__sidebar {
     display: none;
   }
   .hm-chat-layout.has-active-chat .hm-chat-header__back {
     display: inline-flex;
   }
+  .hm-chat-layout.has-active-chat .hm-chat-window {
+    height: 100%;
+    border-radius: 0;
+    border: none;
+  }
   .hm-chat-window {
-    height: calc(100vh - var(--hm-navbar-h) - 80px);
+    height: auto;
     border-radius: 0;
     border-left: none;
     border-right: none;
