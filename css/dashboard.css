@@ -163,6 +163,18 @@
 .hm-mate {
   display: flex; flex-direction: column;
   gap: var(--hm-space-3);
+  position: relative;
+}
+
+/* Zenter Plus — highlighted card */
+.hm-mate--plus {
+  border: 1.5px solid #fde68a;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 60%);
+  box-shadow: 0 2px 12px rgba(251, 191, 36, 0.15);
+}
+.hm-mate--plus:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
 }
 
 /* Header: avatar + name + badges, bottom rule */
@@ -190,10 +202,23 @@
 }
 
 /* Badges: gender + verified */
-.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; line-height: 1; }
+.hm-mate__badges  { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; line-height: 1; flex: 1; }
+.hm-badge--plus   { position: absolute; top: 12px; right: 12px; }
 .hm-badge--female { background: #f3e8ff; color: #7c3aed; border: 1px solid #ddd6fe; }
 .hm-badge--male   { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.hm-badge--verified { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+/* Phone verified — light green pill with dark green text */
+.hm-badge--verified {
+  background: #dcfce7;
+  border: 1.5px solid #15803d;
+  color: #15803d;
+}
+
+/* Fully verified (admit card) — solid dark green pill */
+.hm-badge--verified-full {
+  background: #15803d;
+  color: #fff;
+  border: 1.5px solid #15803d;
+}
 
 /* Gender symbol (♀ ♂) sit below text baseline on iOS Safari due to the
    mathematical Unicode block's font metrics in Apple's SF font.
@@ -225,6 +250,14 @@
   border-top: 1px solid var(--hm-border);
 }
 .hm-mate__joined { font-size: var(--hm-text-xs); color: var(--hm-text-subtle); }
+
+/* Plus badge strip — bottom of card, full width, centered */
+.hm-mate__plus-strip {
+  text-align: center;
+  padding-top: var(--hm-space-2);
+  margin-top: var(--hm-space-2);
+  border-top: 1px solid var(--hm-border);
+}
 
 /* ── Route-timeline body (reference design) ─────────────────────────────── */
 

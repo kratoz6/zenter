@@ -4,7 +4,7 @@
 import { requireAdmin, logout } from './auth.js';
 import { formatPhonePretty }    from './utils.js';
 
-const ROUTES = ['dashboard','users','seeded','feedback','reports','exams','analytics','settings'];
+const ROUTES = ['dashboard','users','seeded','seeded-requests','feedback','reports','exams','analytics','settings'];
 const loaded      = new Set();
 let allUsers      = [];
 let allSeeded     = [];
@@ -76,8 +76,9 @@ function activateRoute(route) {
 const LOADERS = {
   dashboard:  loadDashboard,
   users:      loadUsers,
-  seeded:     loadSeeded,
-  feedback:   loadFeedback,
+  seeded:             loadSeeded,
+  'seeded-requests':  loadSeededRequests,
+  feedback:           loadFeedback,
   reports:    loadReports,
   exams:      loadExams,
   analytics:  loadAnalytics,
@@ -192,6 +193,235 @@ function renderFilteredSeeded() {
   });
   const el = document.getElementById('adm-seeded-list');
   el.innerHTML = filtered.length ? renderSeededTable(filtered) : emptyState('🔍','No seeded users match filters.');
+}
+
+// ─── Seeded user pending requests ────────────────────────────────────────────
+
+async function loadSeededRequests() {
+  const el = document.getElementById('adm-seeded-requests');
+  if (!el) return;
+
+  const { query: q, from: f, sendMessage, adminAcceptSeededRequest, createConversation, sendSeededConnectionRequest } = await import('./supabase.js');
+
+  // Get ALL seeded users and real users for dropdowns + table
+  const { data: allSeededIds } = await q(f('seeded_users').select('id, full_name'));
+  const seededIdSet = new Set((allSeededIds || []).map(s => s.id));
+
+  // Populate dropdowns
+  const seededSelect = document.getElementById('adm-seeded-sender');
+  const realSelect = document.getElementById('adm-real-receiver');
+  if (seededSelect && seededSelect.options.length === 0) {
+    (allSeededIds || []).sort((a, b) => a.full_name.localeCompare(b.full_name)).forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = u.full_name;
+      seededSelect.appendChild(o);
+    });
+  }
+  if (realSelect && realSelect.options.length === 0) {
+    const { data: realUsers } = await q(
+      f('users').select('id, full_name, phone').eq('profile_completed', true).order('full_name')
+    );
+    (realUsers || []).forEach(u => {
+      const o = document.createElement('option');
+      o.value = u.id; o.textContent = `${u.full_name} (${u.phone || ''})`;
+      realSelect.appendChild(o);
+    });
+  }
+
+  // Wire send request button
+  const sendBtn = document.getElementById('adm-send-seeded-request');
+  const sendStatus = document.getElementById('adm-seeded-send-status');
+  if (sendBtn && !sendBtn.dataset.wired) {
+    sendBtn.dataset.wired = 'true';
+    sendBtn.addEventListener('click', async () => {
+      const seededId = seededSelect?.value;
+      const realId = realSelect?.value;
+      if (!seededId || !realId) { sendStatus.textContent = 'Select both users.'; return; }
+
+      sendBtn.disabled = true;
+      sendStatus.style.color = 'var(--adm-text-muted)';
+      sendStatus.textContent = 'Sending…';
+
+      const { error } = await sendSeededConnectionRequest(seededId, realId);
+      if (error) {
+        sendStatus.style.color = '#dc2626';
+        sendStatus.textContent = error.message?.includes('duplicate') || error.message?.includes('unique')
+          ? '✗ Request already exists between these users.'
+          : '✗ ' + error.message;
+        sendBtn.disabled = false;
+        return;
+      }
+
+      sendStatus.style.color = '#16a34a';
+      sendStatus.textContent = '✓ Request sent! It will appear in the real user\'s Requests tab.';
+      sendBtn.disabled = false;
+      // Refresh table
+      loaded.delete('seeded-requests');
+      loadSeededRequests();
+    });
+  }
+
+  // Get connections where seeded user is EITHER sender or receiver
+  const seededIdArr = [...seededIdSet];
+  const { data: connsAsReceiver } = await q(
+    f('connections').select('id, sender_id, receiver_id, status, created_at')
+      .in('receiver_id', seededIdArr).order('created_at', { ascending: false })
+  );
+  const { data: connsAsSender } = await q(
+    f('connections').select('id, sender_id, receiver_id, status, created_at')
+      .in('sender_id', seededIdArr).order('created_at', { ascending: false })
+  );
+
+  // Merge and dedupe
+  const connMap = new Map();
+  [...(connsAsReceiver || []), ...(connsAsSender || [])].forEach(c => connMap.set(c.id, c));
+  const allConns = [...connMap.values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if (!allConns.length) {
+    el.innerHTML = emptyState('✅', 'No seeded user requests yet.');
+    return;
+  }
+
+  const pending  = allConns.filter(c => c.status === 'pending');
+  const accepted = allConns.filter(c => c.status === 'accepted');
+
+  // Collect all user IDs (both real and seeded)
+  const allUserIds = [...new Set(allConns.flatMap(r => [r.sender_id, r.receiver_id]))];
+  const allRealIds = allUserIds.filter(id => !seededIdSet.has(id));
+  const allSeededConnIds = allUserIds.filter(id => seededIdSet.has(id));
+
+  // Fetch real users and seeded users
+  const { data: realUsers } = allRealIds.length
+    ? await q(f('users').select('id, full_name, phone').in('id', allRealIds))
+    : { data: [] };
+  const { data: seededUsers } = allSeededConnIds.length
+    ? await q(f('seeded_users').select('id, full_name').in('id', allSeededConnIds))
+    : { data: [] };
+
+  const realMap = Object.fromEntries((realUsers || []).map(u => [u.id, u]));
+  const seededMap = Object.fromEntries((seededUsers || []).map(u => [u.id, u]));
+
+  // Helper: identify which side is seeded
+  const getParties = (r) => {
+    const senderIsSeeded = seededIdSet.has(r.sender_id);
+    const realUser = senderIsSeeded ? (realMap[r.receiver_id] || {}) : (realMap[r.sender_id] || {});
+    const seededUser = senderIsSeeded ? (seededMap[r.sender_id] || {}) : (seededMap[r.receiver_id] || {});
+    const seededId = senderIsSeeded ? r.sender_id : r.receiver_id;
+    const direction = senderIsSeeded ? '← sent by seeded' : '→ sent to seeded';
+    return { realUser, seededUser, seededId, direction, senderIsSeeded };
+  };
+
+  // Fetch conversations for accepted connections
+  const { data: convs } = accepted.length
+    ? await q(f('conversations').select('id, connection_id').in('connection_id', accepted.map(c => c.id)))
+    : { data: [] };
+  const convByConn = Object.fromEntries((convs || []).map(c => [c.connection_id, c.id]));
+
+  // Build pending rows
+  const pendingRows = pending.map(r => {
+    const { realUser, seededUser, direction, senderIsSeeded } = getParties(r);
+    const date = new Date(r.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    const dirLabel = senderIsSeeded
+      ? `<span style="font-size:10px;color:var(--adm-text-dim);">seeded → real</span>`
+      : `<span style="font-size:10px;color:var(--adm-text-dim);">real → seeded</span>`;
+    // Only show Accept for "real → seeded" (admin acts as seeded).
+    // "seeded → real" must be accepted by the real user themselves.
+    const actionCell = senderIsSeeded
+      ? `<td><span style="font-size:11px;color:var(--adm-text-dim);">Waiting for user</span></td><td></td>`
+      : `<td><button class="adm-btn adm-btn--ok adm-btn--sm" data-accept-seeded="${r.id}" data-sender="${r.sender_id}" data-receiver="${r.receiver_id}">Accept</button></td><td></td>`;
+    return `<tr>
+      <td><strong>${esc(realUser.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(realUser.phone || '')}</span></td>
+      <td>${esc(seededUser.full_name || '—')} ${dirLabel}</td>
+      <td><span style="color:#f59e0b;font-weight:600;">Pending</span></td>
+      <td>${date}</td>
+      ${actionCell}
+    </tr>`;
+  }).join('');
+
+  // Build accepted rows with message input
+  const acceptedRows = accepted.map(r => {
+    const { realUser, seededUser, seededId, senderIsSeeded } = getParties(r);
+    const convId = convByConn[r.id] || '';
+    const date = new Date(r.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' });
+    const dirLabel = senderIsSeeded
+      ? `<span style="font-size:10px;color:var(--adm-text-dim);">seeded → real</span>`
+      : `<span style="font-size:10px;color:var(--adm-text-dim);">real → seeded</span>`;
+    return `<tr>
+      <td><strong>${esc(realUser.full_name || '—')}</strong><br><span style="font-size:11px;color:var(--adm-text-dim);">${esc(realUser.phone || '')}</span></td>
+      <td>${esc(seededUser.full_name || '—')} ${dirLabel}</td>
+      <td><span style="color:#16a34a;font-weight:600;">Active</span></td>
+      <td>${date}</td>
+      <td colspan="2">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" class="adm-search" placeholder="Type as ${esc(seededUser.full_name || 'seeded')}…"
+                 data-msg-input="${convId}" data-seeded-id="${seededId}"
+                 style="flex:1;padding:6px 10px;font-size:12px;min-width:120px;" maxlength="500" />
+          <button class="adm-btn adm-btn--ok adm-btn--sm" data-msg-send="${convId}" data-seeded-id="${seededId}">Send</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<table class="adm-table"><thead><tr>
+    <th>Real User</th><th>Seeded User</th><th>Status</th><th>Date</th><th colspan="2">Action / Message</th>
+  </tr></thead><tbody>${pendingRows}${acceptedRows}</tbody></table>`;
+
+  // Wire accept buttons
+  el.querySelectorAll('[data-accept-seeded]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const connId = btn.dataset.acceptSeeded;
+      const senderId = btn.dataset.sender;
+      const receiverId = btn.dataset.receiver;
+      btn.disabled = true;
+      btn.textContent = 'Accepting…';
+
+      const { data, error } = await adminAcceptSeededRequest(connId);
+      if (error) {
+        toast('Failed: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Accept';
+        return;
+      }
+
+      await createConversation(connId, senderId, receiverId);
+
+      toast('Accepted with greeting!', 'success');
+      // Refresh to show message input
+      loaded.delete('seeded-requests');
+      loadSeededRequests();
+    });
+  });
+
+  // Wire send message buttons
+  el.querySelectorAll('[data-msg-send]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const convId = btn.dataset.msgSend;
+      const seededId = btn.dataset.seededId;
+      const input = el.querySelector(`[data-msg-input="${convId}"]`);
+      const msg = (input?.value || '').trim();
+      if (!msg || !convId) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+      const { error } = await sendMessage(convId, seededId, msg);
+      if (error) {
+        toast('Failed to send: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Send';
+        return;
+      }
+      input.value = '';
+      btn.disabled = false;
+      btn.textContent = 'Send';
+      toast('Message sent as seeded user ✓', 'success');
+    });
+
+    // Enter key support
+    const input = el.querySelector(`[data-msg-input="${btn.dataset.msgSend}"]`);
+    input?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') btn.click();
+    });
+  });
 }
 
 function renderSeededTable(users) {
@@ -387,6 +617,54 @@ async function loadSettings() {
         </div>
       </div>
 
+      <div class="adm-card adm-settings-card">
+        <div class="adm-card__header" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>⭐ Zenter Plus</span>
+          <label class="adm-switch">
+            <input type="checkbox" data-config="plus_enabled" ${platformConfig.plus_enabled !== false ? 'checked' : ''}>
+            <span class="adm-switch__track"></span>
+          </label>
+        </div>
+        <div class="adm-card__body" style="padding:16px 20px;">
+          <p style="font-size:13px;color:var(--adm-text-muted);margin:0 0 12px;">
+            When enabled, free users are limited to the number of active chats below. Plus members get unlimited chats and premium features.
+          </p>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <label style="font-size:13px;font-weight:600;">Free active chats:</label>
+            <input type="number" id="adm-free-chat-limit" min="1" max="20"
+              value="${platformConfig.free_active_chats ?? 2}"
+              style="width:64px;padding:6px 8px;border:1px solid var(--adm-border);border-radius:6px;background:var(--adm-surface);color:var(--adm-text);font-size:13px;" />
+            <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-save-chat-limit">Save</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;">
+            <label style="font-size:13px;font-weight:600;">Base price (paise):</label>
+            <input type="number" id="adm-plus-price" min="100" step="100"
+              value="${platformConfig.plus_price_paise ?? 4900}"
+              style="width:80px;padding:6px 8px;border:1px solid var(--adm-border);border-radius:6px;background:var(--adm-surface);color:var(--adm-text);font-size:13px;" />
+            <span style="font-size:12px;color:var(--adm-text-dim);">4900 = ₹49 &nbsp;|&nbsp; 900 = ₹9</span>
+            <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-save-plus-price">Save</button>
+          </div>
+          <div style="margin-top:10px;padding:10px 14px;background:var(--adm-surface-2);border-radius:6px;font-size:12px;color:var(--adm-text-dim);">
+            💬 <strong style="color:var(--adm-text);">Plus benefits:</strong> Unlimited chats · Verified badge · Featured profile · Priority visibility · Early supporter badge
+          </div>
+        </div>
+      </div>
+
+      <div class="adm-card adm-settings-card">
+        <div class="adm-card__header" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>📞 Contact Exchange</span>
+          <label class="adm-switch">
+            <input type="checkbox" data-config="contact_exchange_enabled" ${platformConfig.contact_exchange_enabled !== false ? 'checked' : ''}>
+            <span class="adm-switch__track"></span>
+          </label>
+        </div>
+        <div class="adm-card__body" style="padding:16px 20px;">
+          <p style="font-size:13px;color:var(--adm-text-muted);margin:0;">
+            When enabled, connected users can request to exchange phone numbers inside chat. Both parties must accept before any contact info is shown.
+          </p>
+        </div>
+      </div>
+
       <div class="adm-card adm-settings-card" style="grid-column:1/-1;">
         <div class="adm-card__header">📋 Recent Audit Log</div>
         <div class="adm-card__body" id="adm-audit-log"><div class="adm-empty" style="padding:24px;">Loading…</div></div>
@@ -400,10 +678,12 @@ async function loadSettings() {
       const cfg   = input.dataset.config;
       const isGlobal = cfg === 'global_maintenance';
       const isFt  = cfg.startsWith('feature_toggles.');
+      const isDirect = ['plus_enabled', 'contact_exchange_enabled'].includes(cfg); // direct top-level config keys
       const ftKey = isFt ? cfg.split('.')[1] : null;
       const { adminUpdateConfig } = await import('./supabase.js');
       let key, value;
-      if (isGlobal) { key = 'global_maintenance'; value = input.checked; }
+      if (isGlobal)  { key = 'global_maintenance'; value = input.checked; }
+      else if (isDirect) { key = cfg; value = input.checked; }
       else if (isFt) {
         const ft = { ...(platformConfig.feature_toggles || {}) };
         ft[ftKey] = input.checked;
@@ -414,6 +694,28 @@ async function loadSettings() {
       platformConfig[key] = value;
       toast(`${capitalize(key)} updated ✓`, 'success');
     });
+  });
+
+  // Wire free chat limit save button
+  document.getElementById('adm-save-chat-limit')?.addEventListener('click', async () => {
+    const val = parseInt(document.getElementById('adm-free-chat-limit')?.value, 10);
+    if (!val || val < 1) { toast('Enter a valid number (min 1)', 'error'); return; }
+    const { adminUpdateConfig } = await import('./supabase.js');
+    const { error } = await adminUpdateConfig('free_active_chats', val, adminPhone);
+    if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+    platformConfig.free_active_chats = val;
+    toast(`Free active chats set to ${val} ✓`, 'success');
+  });
+
+  // Wire Plus price save button
+  document.getElementById('adm-save-plus-price')?.addEventListener('click', async () => {
+    const val = parseInt(document.getElementById('adm-plus-price')?.value, 10);
+    if (!val || val < 100) { toast('Enter a valid price in paise (min 100 = ₹1)', 'error'); return; }
+    const { adminUpdateConfig } = await import('./supabase.js');
+    const { error } = await adminUpdateConfig('plus_price_paise', val, adminPhone);
+    if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+    platformConfig.plus_price_paise = val;
+    toast(`Price set to ₹${val/100} ✓`, 'success');
   });
 
   // Load announcements list
@@ -577,6 +879,46 @@ document.addEventListener('click', async (e) => {
       if (u) u.role = newRole;
       renderFilteredUsers();
       toast(`Role updated to ${newRole} ✓`, 'success');
+    }); return;
+  }
+
+  // ── Grant / Revoke Plus membership ───────────────────────────────────────
+  if (action === 'grant-plus' || action === 'revoke-plus') {
+    const granting = action === 'grant-plus';
+    const userName = btn.dataset.name || 'this user';
+    confirm_({
+      title: granting ? `Grant Plus to ${esc(userName)}?` : `Revoke Plus from ${esc(userName)}?`,
+      msg:   granting ? 'Gives unlimited contact reveals and Plus badge.' : 'Removes Plus benefits. Existing revealed contacts remain visible.',
+      danger: !granting,
+    }, async () => {
+      btn.disabled = true;
+      const { adminSetPlusMember } = await import('./supabase.js');
+      const { error } = await adminSetPlusMember(id, granting);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.plus_member = granting;
+      renderFilteredUsers();
+      toast(granting ? `⭐ Plus granted to ${esc(userName)} ✓` : `Plus revoked from ${esc(userName)} ✓`, 'success');
+    }); return;
+  }
+
+  // ── Verify / Unverify Aspirant (admit card) ──────────────────────────────
+  if (action === 'verify-aspirant' || action === 'unverify-aspirant') {
+    const verifying = action === 'verify-aspirant';
+    const userName  = btn.dataset.name || 'this user';
+    confirm_({
+      title: verifying ? `Verify admit card for ${esc(userName)}?` : `Remove verification for ${esc(userName)}?`,
+      msg:   verifying ? 'Grants full green Verified badge — confirm admit card has been checked.' : 'Downgrades to phone-only verification.',
+      danger: !verifying,
+    }, async () => {
+      btn.disabled = true;
+      const { adminSetVerifiedAspirant } = await import('./supabase.js');
+      const { error } = await adminSetVerifiedAspirant(id, verifying);
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.is_verified_aspirant = verifying;
+      renderFilteredUsers();
+      toast(verifying ? `✓ Admit card verified for ${esc(userName)} ✓` : `Verification removed ✓`, 'success');
     }); return;
   }
 
@@ -760,6 +1102,14 @@ function renderUsersTable(users, withActions = false) {
               data-action="set-role" data-id="${esc(u.id)}" data-role="${isAdmin ? 'user' : 'admin'}">
               ${isAdmin ? 'Revoke admin' : 'Make admin'}
             </button>`}
+        <button class="adm-btn adm-btn--sm ${u.plus_member ? 'adm-btn--warn' : 'adm-btn--ok'}"
+          data-action="${u.plus_member ? 'revoke-plus' : 'grant-plus'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+          ${u.plus_member ? 'Revoke Plus' : 'Grant Plus'}
+        </button>
+        <button class="adm-btn adm-btn--sm ${u.is_verified_aspirant ? 'adm-btn--warn' : 'adm-btn--ok'}"
+          data-action="${u.is_verified_aspirant ? 'unverify-aspirant' : 'verify-aspirant'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+          ${u.is_verified_aspirant ? 'Unverify' : 'Verify admit'}
+        </button>
         ${!isPrivileged
           ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
@@ -781,6 +1131,25 @@ function renderUsersTable(users, withActions = false) {
         <div style="color:var(--adm-text-dim);font-size:10px;">${esc(examCentreName)}</div>
       </td>
       <td><span class="adm-pill adm-pill--${esc(u.role||'user')}">${esc(u.role||'user')}</span></td>
+      <td>
+        ${u.plus_member
+          ? '<span class="adm-pill" style="background:#fef9c3;color:#854d0e;border:1px solid #fef08a;">⭐ Plus</span>'
+          : '<span style="font-size:11px;color:var(--adm-text-dim);">Free</span>'}
+      </td>
+      <td style="font-size:12px;">
+        ${u.is_verified_aspirant
+          ? `<span class="adm-pill" style="background:#16a34a;color:#fff;">✓ Verified</span>
+             ${u.nta_application_number
+               ? `<div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number)}</div>`
+               : ''}`
+          : u.verification_requested
+            ? `<span class="adm-pill" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">⏳ Pending</span>
+               <div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number||'')}</div>`
+            : u.verification_rejected
+              ? `<span class="adm-pill" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;">✗ Rejected</span>
+                 ${u.nta_application_number ? `<div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number)}</div>` : ''}`
+              : '<span style="color:var(--adm-text-dim);">Phone only</span>'}
+      </td>
       <td><span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span></td>
       ${suspCell}
       <td style="font-size:11px">${esc(fmtDate(u.created_at))}</td>
@@ -791,7 +1160,7 @@ function renderUsersTable(users, withActions = false) {
   return `<table class="adm-table"><thead><tr>
     <th>Name</th><th>Phone</th><th>Gender</th><th>Exam</th>
     <th>Home Location</th><th>Exam Centre</th>
-    <th>Role</th><th>Status</th><th>⚠️ Flags</th><th>Joined</th>${ah}
+    <th>Role</th><th>Plus</th><th>Verified</th><th>Status</th><th>⚠️ Flags</th><th>Joined</th>${ah}
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 

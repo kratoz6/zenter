@@ -37,7 +37,7 @@ export function from(table) {
 export function getUserByPhone(phone) {
   return query(
     from('users')
-      .select('id, profile_completed, exam_type, role, state, exam_centre_state')
+      .select('id, profile_completed, exam_type, role, state, exam_centre_state, plus_member, contact_reveals_used')
       .eq('phone', phone)
       .maybeSingle()
   );
@@ -81,7 +81,7 @@ export async function getAdminStats() {
 /** Recent users list for the admin Users section — includes moderation fields. */
 export function getRecentUsers(limit = 50, { seededOnly = false, excludeSeeded = false } = {}) {
   let q = from('users')
-    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, suspicious_flags, device_fingerprint, contact_reveals_used, created_at')
+    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, suspicious_flags, device_fingerprint, created_at')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (seededOnly)    q = q.eq('is_seeded_user', true);
@@ -159,7 +159,7 @@ export function getProfileByPhone(phone) {
         'id, phone, full_name, gender, state, district, ' +
         'exam_centre_state, exam_centre_district, exam_center, exam_type, ' +
         'college, travel_mode, stay_plan, bio, ' +
-        'profile_completed, is_profile_paused, created_at'
+        'profile_completed, is_profile_paused, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, created_at'
       )
       .eq('phone', phone)
       .maybeSingle()
@@ -180,7 +180,7 @@ export function upsertUser(payload) {
 //   - Any other examType: strict equality — segregates NEET PG etc.
 export function getAllUsers(examType = 'NEET UG') {
   let q = from('users')
-    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, created_at')
+    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, plus_member, is_verified_aspirant, created_at')
     .eq('profile_completed', true)
     .or('is_profile_paused.is.null,is_profile_paused.eq.false')
     // Exclude admin-suspended and admin-banned users from the public feed
@@ -200,7 +200,7 @@ export function getAllUsers(examType = 'NEET UG') {
 /** Fetch active seeded users for the find-mates feed. RLS handles paused/inactive. */
 export function getSeededUsers(examType = 'NEET UG') {
   let q = from('seeded_users')
-    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, created_at');
+    .select('id, full_name, gender, state, district, exam_centre_state, exam_centre_district, exam_center, phone, travel_mode, stay_plan, bio, exam_type, is_verified_aspirant, created_at');
   if (!examType || examType === 'NEET UG') {
     q = q.or('exam_type.eq.NEET UG,exam_type.is.null');
   } else {
@@ -509,11 +509,67 @@ export function adminSetUserRole(targetId, role, requesterPhone) {
 // adminDeleteAllSeeded and adminHideSeededUser removed — seeded users now live
 // in the seeded_users table. Use deleteAllSeededUsers / toggleSeededUserPause instead.
 
+// ─── Zenter Plus — Monetization ───────────────────────────────────────────────
+
 // ─── Contact reveal ───────────────────────────────────────────────────────────
 
-/** Increment contact_reveals_used counter atomically. Returns updated row. */
+/**
+ * Attempt to reveal a contact. Atomically increments the counter and returns:
+ *   { can_reveal, reveals_used, limit, is_plus, incremented }
+ */
 export function attemptReveal(userId) {
   return query(supabase.rpc('increment_reveal_count', { p_user_id: userId }));
+}
+
+/** Grant or revoke Plus membership (admin). */
+export function adminSetPlusMember(targetId, isPlus) {
+  return query(from('users').update({ plus_member: isPlus }).eq('id', targetId).select('id').single());
+}
+
+// ─── Razorpay Payment ─────────────────────────────────────────────────────────
+
+const EDGE_BASE = 'https://wppuzqaigtffcpuvjolt.supabase.co/functions/v1';
+
+/** Create a Razorpay order server-side. Pass couponCode to apply discount server-side.
+ *  dryRun=true validates the coupon and returns pricing without creating a real order.
+ *  Retries up to 2 times on failure (Edge Function cold start can cause intermittent errors). */
+export async function createRazorpayOrder(userId, couponCode = null, dryRun = false) {
+  const MAX_RETRIES = 2;
+  let lastError = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt)); // backoff
+      const resp = await fetch(`${EDGE_BASE}/create-razorpay-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE.anonKey },
+        body: JSON.stringify({ user_id: userId, coupon_code: couponCode || null, dry_run: dryRun }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Could not create order');
+      return data;
+    } catch (err) {
+      lastError = err;
+      console.warn(`[razorpay] attempt ${attempt + 1} failed:`, err.message);
+    }
+  }
+  throw lastError;
+}
+
+/** Verify payment server-side and grant Plus. */
+export async function verifyRazorpayPayment(orderId, paymentId, signature, userId) {
+  const resp = await fetch(`${EDGE_BASE}/verify-razorpay-payment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE.anonKey },
+    body: JSON.stringify({
+      razorpay_order_id:    orderId,
+      razorpay_payment_id:  paymentId,
+      razorpay_signature:   signature,
+      user_id:              userId,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Payment verification failed');
+  return data;
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -522,6 +578,24 @@ export function attemptReveal(userId) {
 export function trackEvent(eventName, userId, properties = {}) {
   return query(
     from('analytics_events').insert({ event_name: eventName, user_id: userId || null, properties })
+  );
+}
+
+/** Grant or revoke Verified Aspirant status (admit card verified by admin). */
+export function adminSetVerifiedAspirant(targetId, isVerified) {
+  const updates = isVerified
+    ? { is_verified_aspirant: true,  verification_requested: false, verification_rejected: false }
+    : { is_verified_aspirant: false, verification_requested: false, verification_rejected: true  };
+  return query(from('users').update(updates).eq('id', targetId).select('id').single());
+}
+
+/** User submits NTA application number and requests verification. */
+export function requestAdmitCardVerification(phone, ntaNumber) {
+  return query(
+    from('users')
+      .update({ nta_application_number: ntaNumber.trim(), verification_requested: true, verification_rejected: false })
+      .eq('phone', phone)
+      .select('id').single()
   );
 }
 
@@ -547,4 +621,182 @@ export function saveDeviceFingerprint(userId, fingerprint) {
 /** Get all users sharing the same device fingerprint (admin: detect multi-account). */
 export function getUsersByFingerprint(fingerprint) {
   return query(from('users').select('id, full_name, phone, created_at').eq('device_fingerprint', fingerprint));
+}
+
+// ─── Seeded user connection requests ─────────────────────────────────────────
+
+/** Get pending connection requests where receiver is a seeded user. */
+export async function getSeededPendingRequests() {
+  // Get all seeded user IDs
+  const { data: seeded } = await query(from('seeded_users').select('id'));
+  if (!seeded?.length) return { data: [], error: null };
+  const seededIds = seeded.map(s => s.id);
+
+  // Get pending connections where receiver_id is a seeded user
+  const { data, error } = await query(
+    from('connections')
+      .select('id, sender_id, receiver_id, status, created_at')
+      .eq('status', 'pending')
+      .in('receiver_id', seededIds)
+      .order('created_at', { ascending: false })
+  );
+  return { data, error };
+}
+
+/** Admin: accept a connection request on behalf of a seeded user. */
+export function adminAcceptSeededRequest(connectionId) {
+  return query(
+    from('connections')
+      .update({ status: 'accepted' })
+      .eq('id', connectionId)
+      .select('id, sender_id, receiver_id')
+      .single()
+  );
+}
+
+/** Admin: send a connection request FROM a seeded user TO a real user. */
+export function sendSeededConnectionRequest(seededUserId, realUserId) {
+  return query(
+    from('connections')
+      .insert({ sender_id: seededUserId, receiver_id: realUserId, status: 'pending' })
+      .select('id')
+      .single()
+  );
+}
+
+// ─── Chat System ─────────────────────────────────────────────────────────────
+
+/** Create a conversation when a connection is accepted. Idempotent. */
+export function createConversation(connectionId, userA, userB) {
+  return query(supabase.rpc('create_conversation_for_connection', {
+    p_connection_id: connectionId, p_user_a: userA, p_user_b: userB,
+  }));
+}
+
+/** Get all active conversations for a user, with the other user's info. */
+export async function getMyConversations(userId) {
+  const { data, error } = await query(
+    from('conversations')
+      .select('id, connection_id, user_a, user_b, is_active, updated_at, created_at')
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+  );
+  return { data, error };
+}
+
+/** Get messages for a conversation (paginated, newest last). */
+export function getMessages(conversationId, limit = 50, before = null) {
+  let q = from('messages')
+    .select('id, conversation_id, sender_id, body, message_type, created_at')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  if (before) q = q.lt('created_at', before);
+  return query(q);
+}
+
+/** Send a text message. Returns message id. */
+export function sendMessage(conversationId, senderId, body) {
+  return query(supabase.rpc('send_message', {
+    p_conversation_id: conversationId,
+    p_sender_id: senderId,
+    p_body: body,
+    p_message_type: 'text',
+  }));
+}
+
+/** Check if user can start a new chat (free limit check). */
+export function canStartChat(userId) {
+  return query(supabase.rpc('can_start_chat', { p_user_id: userId }));
+}
+
+/** Get active chat count for a user. */
+export function getActiveChatCount(userId) {
+  return query(supabase.rpc('get_active_chat_count', { p_user_id: userId }));
+}
+
+/** Get unread message count across all conversations for a user. */
+export async function getUnreadCount(userId, lastReadMap = {}) {
+  // lastReadMap: { conversationId: lastReadTimestamp }
+  // For V1, count messages where sender != userId and created_at > last visit
+  const { data: convs } = await getMyConversations(userId);
+  if (!convs?.length) return 0;
+
+  let total = 0;
+  for (const conv of convs) {
+    const lastRead = lastReadMap[conv.id] || conv.created_at;
+    const { data } = await query(
+      from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conv.id)
+        .neq('sender_id', userId)
+        .gt('created_at', lastRead)
+    );
+    total += data ?? 0;
+  }
+  return total;
+}
+
+// ─── Contact Exchange ────────────────────────────────────────────────────────
+
+/** Request to exchange contact details inside a chat. */
+export function requestContactExchange(conversationId, requesterId) {
+  return query(supabase.rpc('request_contact_exchange', {
+    p_conversation_id: conversationId,
+    p_requester_id: requesterId,
+  }));
+}
+
+/** Respond to a contact exchange request (accept/decline). */
+export function respondContactExchange(requestId, responderId, accept) {
+  return query(supabase.rpc('respond_contact_exchange', {
+    p_request_id: requestId,
+    p_responder_id: responderId,
+    p_accept: accept,
+  }));
+}
+
+/** Get the contact exchange status for a conversation. */
+export function getContactExchangeStatus(conversationId) {
+  return query(
+    from('contact_exchange_requests')
+      .select('id, requester_id, responder_id, status, responded_at, created_at')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  );
+}
+
+// ─── Realtime subscription ──────────────────────────────────────────────────
+
+/** Subscribe to new messages in a conversation. Returns the channel (call .unsubscribe() to stop). */
+export function subscribeToMessages(conversationId, onMessage) {
+  return supabase
+    .channel(`messages:${conversationId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `conversation_id=eq.${conversationId}`,
+    }, (payload) => onMessage(payload.new))
+    .subscribe();
+}
+
+/** Subscribe to all new messages across all user's conversations. */
+export function subscribeToAllMessages(userId, conversationIds, onMessage) {
+  // Subscribe to each conversation's messages
+  const channels = conversationIds.map(cid =>
+    supabase
+      .channel(`messages:${cid}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${cid}`,
+      }, (payload) => onMessage(payload.new))
+      .subscribe()
+  );
+  return channels; // caller can .unsubscribe() each
 }

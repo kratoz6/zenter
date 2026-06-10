@@ -236,6 +236,22 @@ html, body { overflow-x: hidden; max-width: 100%; }
 }
 
 /* ============================================================
+   ≥ 1440px — LARGE DESKTOP: 3-column card grid, wider container
+============================================================ */
+@media (min-width: 1440px) {
+  .hm-container { max-width: 1320px; }
+  .hm-grid-cards { grid-template-columns: repeat(3, 1fr); }
+  .hm-dashboard { grid-template-columns: 260px 1fr; gap: var(--hm-space-5); }
+}
+
+/* ============================================================
+   769px–991px — TABLET: 2-column card grid
+============================================================ */
+@media (min-width: 769px) and (max-width: 991.98px) {
+  .hm-grid-cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================================
    REDUCED MOTION
 ============================================================ */
 @media (prefers-reduced-motion: reduce) {

@@ -17,6 +17,7 @@
   <link href="/css/style.css" rel="stylesheet" />
   <link href="/css/components.css" rel="stylesheet" />
   <link href="/css/dashboard.css" rel="stylesheet" />
+  <link href="/css/chat.css" rel="stylesheet" />
   <link href="/css/responsive.css" rel="stylesheet" />
 
   <link rel="icon" href="/assets/logos/favicon.svg" type="image/svg+xml" />
@@ -35,14 +36,20 @@
         </button>
         <button class="hm-tab is-active" role="tab" data-tab="find-mates" aria-selected="true">Find Mates</button>
         <button class="hm-tab" role="tab" data-tab="connections" aria-selected="false">Connections</button>
+        <button class="hm-tab" role="tab" data-tab="chats" aria-selected="false">
+          Chats
+          <span id="hm-chats-tab-badge" class="hm-nav-badge" hidden aria-live="polite">0</span>
+        </button>
       </div>
+
+      <!-- Zenter Plus chat usage banner (shown to free users on ALL tabs) -->
+      <div id="hm-reveal-banner" class="hm-reveal-banner" hidden></div>
 
       <!-- ── Requests panel ─────────────────────────────────────────────── -->
       <div id="hm-panel-requests" hidden>
         <div class="hm-grid-cards" id="hm-requests-grid"></div>
       </div>
 
-      <!-- ── Find Mates panel ────────────────────────────────────────────── -->
       <div id="hm-panel-find-mates">
 
       <header class="hm-feed-header">
@@ -133,6 +140,15 @@
 
       </div><!-- /#hm-panel-find-mates -->
 
+      <!-- ── Chats panel ────────────────────────────────────────────────── -->
+      <div id="hm-panel-chats" hidden>
+        <div id="hm-chats-root">
+          <div style="text-align:center;padding:var(--hm-space-7) 0;">
+            <div class="hm-loader__spinner" style="margin:0 auto;"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── Connections panel ───────────────────────────────────────────── -->
       <div id="hm-panel-connections" hidden>
         <div id="hm-connections-root">
@@ -158,7 +174,8 @@
           <h2 class="hm-modal__name" id="hm-modal-name"></h2>
           <div class="d-flex gap-2 flex-wrap mt-1">
             <span class="hm-badge" id="hm-modal-gender-badge"></span>
-            <span class="hm-badge hm-badge--success">✓ Verified</span>
+            <span class="hm-badge hm-badge--verified" id="hm-modal-verified-badge" title="Phone verified">✓ Verified</span>
+            <span class="hm-badge hm-badge--plus" id="hm-modal-plus-badge" hidden>⭐ Plus</span>
           </div>
         </div>
       </div>
@@ -252,6 +269,36 @@
       <button type="button" class="hm-btn hm-btn--primary" id="hm-safety-agree"
               style="width:100%;">
         I Agree
+      </button>
+    </div>
+  </div>
+
+  <!-- Zenter Plus upgrade prompt — shown when free reveal limit is reached -->
+  <div id="hm-upgrade-dialog" class="hm-modal-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="hm-upgrade-title" style="z-index:1060;">
+    <div class="hm-modal" style="max-width:420px;padding:var(--hm-space-6);">
+      <div style="font-size:2rem;text-align:center;margin-bottom:var(--hm-space-3);">⭐</div>
+      <h3 id="hm-upgrade-title"
+          style="margin:0 0 var(--hm-space-3);text-align:center;font-size:var(--hm-text-lg);font-weight:700;">
+        Upgrade to Zenter Plus
+      </h3>
+      <p id="hm-upgrade-msg"
+         style="margin:0 0 var(--hm-space-5);color:var(--hm-text-muted);font-size:var(--hm-text-sm);line-height:1.65;text-align:center;">
+      </p>
+      <div style="background:var(--hm-surface-2);border-radius:var(--hm-radius-lg);padding:var(--hm-space-4);margin-bottom:var(--hm-space-5);">
+        <p style="margin:0 0 var(--hm-space-2);font-weight:700;font-size:var(--hm-text-sm);">Zenter Plus — ₹49 / exam season</p>
+        <ul style="margin:0;padding-left:var(--hm-space-4);font-size:var(--hm-text-sm);color:var(--hm-text-muted);line-height:1.8;">
+          <li>Unlimited contact reveals</li>
+          <li>Verified Aspirant Badge</li>
+          <li>Featured profile visibility</li>
+          <li>Early Supporter Badge</li>
+        </ul>
+      </div>
+      <a href="/plus.html" class="hm-btn hm-btn--primary" style="width:100%;margin-bottom:var(--hm-space-2);display:block;text-align:center;">
+        Get Zenter Plus — ₹49 →
+      </a>
+      <button type="button" class="hm-btn hm-btn--ghost" id="hm-upgrade-close" style="width:100%;">
+        Maybe later
       </button>
     </div>
   </div>

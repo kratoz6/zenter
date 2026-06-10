@@ -5,7 +5,7 @@ import { getAllUsers, getUserByPhone, getMyConnections,
          sendConnectionRequest, respondToRequest, deleteRequest,
          getBlockedUserIds, getBlockedByIds, getSeededUsers,
          getPlatformConfig, attemptReveal, trackEvent, flagRapidReveal, blockUser,
-         deleteConnectionsBetween } from './supabase.js';
+         deleteConnectionsBetween, createConversation, canStartChat } from './supabase.js';
 import { debounce } from './utils.js';
 import { toast, setButtonBusy } from './ui.js';
 import * as Relationships from './relationships.js';
@@ -22,8 +22,15 @@ let myUserId              = null;
 let myExamType            = null;   // permanent — set during onboarding
 let myExamTypeForFeed     = null;   // null for admins (all exams), else same as myExamType
 let myExamCentreState     = null;   // state-level matching boundary
+let myPlusMember          = false;  // Zenter Plus membership
+let myRevealsUsed         = 0;      // contact reveals used so far
+let myFreeLimit           = 2;      // from platform_config
+let myPlusEnabled         = true;   // whether Plus gating is active
+let revealedUserIds       = new Set(); // Gap 1: client-side revealed set prevents re-incrementing
 let firebaseUser    = null;   // stored for lazy connections load
 let connectionsLoaded = false;
+let chatsLoaded       = false;
+let _pendingChatUserId = null;  // deep-link: open specific user's chat
 let blockedUserIds  = new Set(); // users the current user has blocked
 let blockedByIds    = new Set(); // users who have blocked the current user
 let dataLoaded      = false;     // true once loadData() has hydrated — gates empty states
@@ -39,6 +46,24 @@ const FILTERS = [
 ];
 
 const AVATAR_COLORS = ['#FF6B35','#4F46E5','#10B981','#F59E0B','#8B5CF6','#06B6D4','#EF4444'];
+
+/** Interleave seeded users evenly among real users so they appear mixed in the feed. */
+function shuffleMerge(real, seeded) {
+  if (!seeded.length) return [...real];
+  if (!real.length) return [...seeded];
+  const result = [];
+  const gap = Math.max(1, Math.floor(real.length / (seeded.length + 1)));
+  let si = 0;
+  for (let i = 0; i < real.length; i++) {
+    result.push(real[i]);
+    if (si < seeded.length && (i + 1) % gap === 0) {
+      result.push(seeded[si++]);
+    }
+  }
+  // Append any remaining seeded users
+  while (si < seeded.length) result.push(seeded[si++]);
+  return result;
+}
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -66,6 +91,10 @@ async function init() {
     ? null
     : (me?.exam_centre_state || null);
 
+  // Zenter Plus state
+  myPlusMember  = me?.plus_member === true;
+  myRevealsUsed = me?.contact_reveals_used || 0;
+
   // Populate the district filter dropdown with districts from the user's exam state.
   // Admin has no state boundary so show all districts (sorted A-Z).
   const districtEl = document.getElementById('hm-filter-district');
@@ -88,6 +117,10 @@ async function init() {
   const isAdmin = myRole === 'admin' || myRole === 'superadmin';
   const adminNavItem = document.getElementById('hm-admin-nav-item');
   if (adminNavItem) adminNavItem.hidden = !isAdmin;
+
+  // Gap 3: hide "Get Zenter Plus" from navbar for Plus members
+  const plusNavItem = document.getElementById('hm-plus-nav-item');
+  if (plusNavItem) plusNavItem.hidden = myPlusMember;
 
   // Non-NEET UG exam types → maintenance page (product focus is NEET UG).
   if (myExamType !== 'NEET UG') {
@@ -152,21 +185,30 @@ async function loadData() {
 
   if (usersRes.error) { renderError(usersRes.error.message); return; }
 
+  // Read config
+  const cfgRows = cfgRes.data || [];
+  myFreeLimit   = cfgRows.find(r => r.key === 'free_reveal_limit')?.value ?? 2;
+  myPlusEnabled = cfgRows.find(r => r.key === 'plus_enabled')?.value !== false;
+
+  // Clear revealed set on data reload so new sessions are clean
+  revealedUserIds = new Set();
+
+  // Show reveal usage banner for non-plus free users when Plus is enabled
+  renderRevealBanner(myPlusEnabled);
+
   // Global seeded visibility toggle — admin can turn all seeded users off
-  const seededUsersVisible = (cfgRes.data || [])
-    .find(r => r.key === 'seeded_users_visible')?.value !== false;
+  const seededUsersVisible = cfgRows.find(r => r.key === 'seeded_users_visible')?.value !== false;
 
   // Check if exam centre should be shown on seeded user cards
-  const showSeededExamCentre = (cfgRes.data || [])
-    .find(r => r.key === 'seeded_exam_centre_visible')?.value !== false;
+  const showSeededExamCentre = cfgRows.find(r => r.key === 'seeded_exam_centre_visible')?.value !== false;
 
   // Apply both toggles
   const seededUsers = seededUsersVisible
     ? (seededRes.data || []).map(u => ({ ...(showSeededExamCentre ? u : { ...u, exam_center: null }), __seeded: true }))
     : [];
 
-  // Merge real + seeded users into one combined list for the feed
-  const combined = [...(usersRes.data || []), ...seededUsers];
+  // Merge real + seeded users into one shuffled list for the feed
+  const combined = shuffleMerge(usersRes.data || [], seededUsers);
 
   Relationships.hydrate(connsRes.data || [], myUserId);
 
@@ -187,19 +229,52 @@ async function loadData() {
     return true;
   });
 
+  // Sort Plus members to top — featured profile benefit
+  // Within each group (Plus / Free) keep the original created_at order
+  allUsers.sort((a, b) => {
+    if (a.plus_member && !b.plus_member) return -1;
+    if (!a.plus_member && b.plus_member) return  1;
+    return 0;
+  });
+
   dataLoaded = true; // gate empty states until real data is present
   renderRequests();
   updateNavBadge();
   applyFilters();
+
+  // Fetch unread chat count for the badge (regardless of which tab is active)
+  if (myUserId) {
+    try {
+      const { getMyConversations } = await import('./supabase.js');
+      const { data: convs } = await getMyConversations(myUserId);
+      let lastRead = {};
+      try { lastRead = JSON.parse(sessionStorage.getItem('hm.chat.lastRead') || '{}'); } catch {}
+      let unread = 0;
+      (convs || []).forEach(c => {
+        const otherId = c.user_a === myUserId ? c.user_b : c.user_a;
+        const lr = lastRead[c.id];
+        if (!lr || new Date(c.updated_at) > new Date(lr)) unread++;
+      });
+      const badge = document.getElementById('hm-chats-tab-badge');
+      if (badge) { badge.textContent = unread; badge.hidden = unread === 0; }
+    } catch {}
+  }
+
+  // If page loaded with a #chats or #chats:userId hash, re-activate now that data is ready
+  const currentHash = parseHash(location.hash);
+  if (currentHash === 'chats' || currentHash === 'connections') {
+    activateTab(currentHash);
+  }
 }
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
 
-const VALID_TABS = ['requests', 'find-mates', 'connections'];
+const VALID_TABS = ['requests', 'find-mates', 'chats', 'connections'];
 
 const TAB_PANELS = () => ({
   'requests':    document.getElementById('hm-panel-requests'),
   'find-mates':  document.getElementById('hm-panel-find-mates'),
+  'chats':       document.getElementById('hm-panel-chats'),
   'connections': document.getElementById('hm-panel-connections'),
 });
 
@@ -220,25 +295,31 @@ function applyInitialTabFromHash() {
   Object.entries(TAB_PANELS()).forEach(([key, el]) => { if (el) el.hidden = key !== tab; });
 }
 
+function parseHash(hash) {
+  const h = (hash || '').slice(1); // remove #
+  // Support #chats:userId deep links
+  if (h.startsWith('chats:')) {
+    _pendingChatUserId = h.split(':')[1] || null;
+    return 'chats';
+  }
+  return VALID_TABS.includes(h) ? h : 'find-mates';
+}
+
 function wireTabs() {
-  // Resolve starting tab from URL hash; default to 'find-mates'
-  const initialHash = location.hash.slice(1);
-  const startTab = VALID_TABS.includes(initialHash) ? initialHash : 'find-mates';
-  if (startTab !== 'find-mates') activateTab(startTab); // HTML already shows find-mates
+  const startTab = parseHash(location.hash);
+  if (startTab !== 'find-mates') activateTab(startTab);
 
   document.querySelectorAll('.hm-tab[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const t = btn.dataset.tab;
       activateTab(t);
-      // 'find-mates' is the canonical default — no hash needed
       history.replaceState(null, '', t === 'find-mates' ? location.pathname : `#${t}`);
     });
   });
 
-  // Respond to hash changes (e.g. nav-bar Connections link while on dashboard)
   window.addEventListener('hashchange', () => {
-    const h = location.hash.slice(1);
-    activateTab(VALID_TABS.includes(h) ? h : 'find-mates');
+    const tab = parseHash(location.hash);
+    activateTab(tab);
   });
 }
 
@@ -254,12 +335,43 @@ async function activateTab(name) {
   const panels = {
     'requests':    document.getElementById('hm-panel-requests'),
     'find-mates':  document.getElementById('hm-panel-find-mates'),
+    'chats':       document.getElementById('hm-panel-chats'),
     'connections': document.getElementById('hm-panel-connections'),
   };
   Object.entries(panels).forEach(([key, el]) => { if (el) el.hidden = key !== tab; });
 
   // Render Requests tab content (derived from in-memory data — no extra fetch)
   if (tab === 'requests') renderRequests();
+
+  // Lazy-load Chats on first activation
+  if (tab === 'chats' && myUserId) {
+    if (!chatsLoaded) {
+      chatsLoaded = true;
+      const root = document.getElementById('hm-chats-root');
+      if (root) {
+        const usersMap = new Map();
+        allUsers.forEach(u => usersMap.set(u.id, u));
+        rawUserMap.forEach((u, id) => { if (!usersMap.has(id)) usersMap.set(id, u); });
+
+        const { mountChat } = await import('./chat.js');
+        await mountChat(root, myUserId, usersMap, (unread) => {
+          const badge = document.getElementById('hm-chats-tab-badge');
+          if (badge) {
+            badge.textContent = unread;
+            badge.hidden = unread === 0;
+          }
+        });
+      }
+    }
+
+    // Deep-link: open a specific user's chat if pending
+    if (_pendingChatUserId) {
+      const uid = _pendingChatUserId;
+      _pendingChatUserId = null;
+      const { openChatByUserId } = await import('./chat.js');
+      openChatByUserId(uid);
+    }
+  }
 
   // Lazy-load Connections on first activation
   if (tab === 'connections' && !connectionsLoaded && firebaseUser) {
@@ -377,7 +489,8 @@ function wireConnectionActions() {
     const userId = btn.dataset.userId;
     const connId = btn.dataset.connId || null;
 
-    if (action === 'reveal') { doReveal(); return; }
+    if (action === 'open-chat') { closeModal(); openChatWithUser(userId); return; }
+    // call-exchange is handled by connections.js directly
     if (action === 'block')  { openBlockModal(userId); return; }
 
     setButtonBusy(btn, true);
@@ -406,16 +519,6 @@ async function doConnect(userId) {
   const existing = Relationships.get(userId);
   if (existing.status !== REL.NONE) return;
 
-  // Seeded users live in a separate table — no FK in connections.
-  // Simulate a pending request so the UI updates without hitting the DB.
-  const targetUser = allUsers.find(u => u.id === userId);
-  if (targetUser?.__seeded) {
-    Relationships.set(userId, { status: REL.PENDING_OUT, role: 'sender', connectionId: `seeded-${userId}` });
-    renderModalActions();
-    toast('Request sent!', { variant: 'success' });
-    return;
-  }
-
   // Optimistic update — connectionId filled in after server confirms.
   Relationships.set(userId, { status: REL.PENDING_OUT, role: 'sender', connectionId: null });
 
@@ -432,19 +535,32 @@ async function doConnect(userId) {
 }
 
 async function doAccept(userId, connId) {
+  // Check chat limit before accepting (free users: 2 active chats)
+  const { data: chatCheck } = await canStartChat(myUserId);
+  if (chatCheck && !chatCheck.can_chat) {
+    toast(`You've reached your free chat limit (${chatCheck.limit}). Upgrade to Zenter Plus for unlimited chats!`, { variant: 'warning' });
+    closeModal();
+    return;
+  }
+
   const { error } = await respondToRequest(connId, 'accepted');
   if (error) { toast(error.message || 'Could not accept.', { variant: 'danger' }); return; }
   Relationships.set(userId, { status: REL.CONNECTED, role: 'receiver', connectionId: connId });
   connectionsLoaded = false; // Connections tab re-fetches to include new contact
+  chatsLoaded = false;       // Chats tab re-fetches to include new conversation
   notifyConnectionsChanged();
-  toast('Connected! You can now reveal their contact.', { variant: 'success' });
+
+  // Create a conversation for this accepted connection
+  createConversation(connId, myUserId, userId).catch(err =>
+    console.warn('[chat] conversation creation error (may already exist)', err)
+  );
+
+  toast('Connected! You can now chat.', { variant: 'success' });
   showSafetyConsent();
 
-  // Auto-navigate to the Connections tab so the user immediately sees the
-  // new contact. Works whether the accept came from a Requests card or
-  // from the profile modal (modal is closed first if open).
+  // Auto-navigate to the Chats tab so the user can start chatting
   closeModal();
-  activateTab('connections');
+  activateTab('chats');
 }
 
 async function doDecline(userId, connId) {
@@ -464,6 +580,44 @@ async function doWithdraw(userId, connId) {
   toast('Request cancelled.', { variant: 'info' });
 }
 
+// ─── Zenter Plus chat usage banner ───────────────────────────────────────────
+function renderRevealBanner(plusEnabled) {
+  const banner = document.getElementById('hm-reveal-banner');
+  if (!banner) return;
+  if (myPlusMember || !plusEnabled) { banner.hidden = true; return; }
+  const remaining = Math.max(0, myFreeLimit - myRevealsUsed);
+  banner.hidden = false;
+  banner.innerHTML = remaining > 0
+    ? `<span class="hm-reveal-banner__text">
+         You have <strong>${remaining} free chat${remaining === 1 ? '' : 's'}</strong> remaining.
+         <a href="/plus.html" class="hm-reveal-banner__link">Get Zenter Plus for unlimited chats →</a>
+       </span>`
+    : `<span class="hm-reveal-banner__text hm-reveal-banner__text--limit">
+         You've used all your free chats.
+         <a href="/plus.html" class="hm-reveal-banner__link">Upgrade to Zenter Plus →</a>
+       </span>`;
+}
+
+// ─── Zenter Plus upgrade prompt ───────────────────────────────────────────────
+function showUpgradePrompt(rev) {
+  const overlay = document.getElementById('hm-upgrade-dialog');
+  if (!overlay) return;
+  const msg = document.getElementById('hm-upgrade-msg');
+  if (msg) {
+    msg.textContent = `You've used all ${rev.limit} of your free chats. Upgrade to Zenter Plus for unlimited chats and contact exchange.`;
+  }
+  overlay.classList.add('is-open');
+  trackEvent('upgrade_modal_view', myUserId, { source: 'reveal_limit', reveals_used: rev.reveals_used });
+  document.getElementById('hm-upgrade-close')?.addEventListener('click', () => {
+    overlay.classList.remove('is-open');
+  }, { once: true });
+
+  // Track CTA click
+  overlay.querySelector('a[href="/plus.html"]')?.addEventListener('click', () => {
+    trackEvent('upgrade_cta_click', myUserId, { source: 'upgrade_dialog' });
+  }, { once: true });
+}
+
 // ─── Safety consent dialog ────────────────────────────────────────────────────
 // Shown after phone reveal AND after accepting a connection request.
 function showSafetyConsent() {
@@ -475,35 +629,57 @@ function showSafetyConsent() {
   }, { once: true });
 }
 
-function doReveal() {
-  if (!modalUser?.phone) return;
-  const phone  = modalUser.phone;
-  const waNum  = phone.replace(/\D/g, '');
+// doReveal removed — contact exchange happens inside chat only.
 
-  // Rapid reveal detection — flag if 2 reveals happen within 60 seconds
-  const RAPID_WINDOW_MS = 60_000;
-  const now = Date.now();
-  const lastReveal = parseInt(sessionStorage.getItem('ztr_last_reveal') || '0', 10);
-  if (lastReveal && (now - lastReveal) < RAPID_WINDOW_MS && myUserId) {
-    flagRapidReveal(myUserId); // fire-and-forget
-    trackEvent('suspicious_rapid_reveal', myUserId, { gap_ms: now - lastReveal });
+/** Navigate to Chats tab and open a specific user's conversation. */
+function openChatWithUser(userId) {
+  _pendingChatUserId = userId;
+  activateTab('chats');
+  history.replaceState(null, '', `#chats:${userId}`);
+}
+
+/** Show popup when user clicks Call — must exchange contact first. */
+function showCallExchangePrompt(userId) {
+  const user = allUsers.find(u => u.id === userId) || rawUserMap.get(userId);
+  const name = user?.full_name || 'this user';
+
+  // Reuse a simple overlay
+  let overlay = document.getElementById('hm-call-exchange-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hm-call-exchange-overlay';
+    overlay.className = 'hm-feedback-overlay';
+    overlay.innerHTML = `
+      <div class="hm-feedback-box" style="text-align:center;">
+        <div style="font-size:40px;margin-bottom:var(--hm-space-3);">📞</div>
+        <h3 id="hm-call-exchange-title" style="margin:0 0 var(--hm-space-2);">Exchange Contact First</h3>
+        <p id="hm-call-exchange-msg" class="hm-text-muted" style="font-size:var(--hm-text-sm);margin:0 0 var(--hm-space-4);"></p>
+        <div class="d-flex gap-2 justify-content-center">
+          <button type="button" class="hm-btn hm-btn--ghost hm-btn--sm" id="hm-call-exchange-cancel">Cancel</button>
+          <button type="button" class="hm-btn hm-btn--primary hm-btn--sm" id="hm-call-exchange-go">💬 Go to Chat</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
   }
-  sessionStorage.setItem('ztr_last_reveal', String(now));
 
-  const phoneEl   = document.getElementById('hm-modal-phone');
-  const revealEl  = document.getElementById('hm-modal-contact-reveal');
-  const actionsEl = document.getElementById('hm-modal-actions');
+  document.getElementById('hm-call-exchange-msg').textContent =
+    `To call ${name}, you need to exchange contact details first. Open the chat and use "Exchange Contact" — both of you must agree before numbers are shared.`;
 
-  if (phoneEl)  phoneEl.hidden = true;
-  if (revealEl) revealEl.innerHTML = `
-    <div class="hm-contact-revealed">
-      <span class="hm-contact-revealed__number">${esc(phone)}</span>
-      <div class="hm-contact-revealed__links">
-        <a href="tel:${esc(phone)}" class="hm-btn hm-btn--primary hm-btn--sm">📞 Call</a>
-        <a href="https://wa.me/${esc(waNum)}" target="_blank" rel="noopener noreferrer" class="hm-btn hm-btn--soft hm-btn--sm">💬 WhatsApp</a>
-      </div>
-    </div>`;
-  if (actionsEl) actionsEl.innerHTML = '';
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+
+  const close = () => {
+    overlay.classList.remove('is-open');
+    document.body.style.overflow = '';
+  };
+
+  document.getElementById('hm-call-exchange-cancel').onclick = close;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); }, { once: true });
+
+  document.getElementById('hm-call-exchange-go').onclick = () => {
+    close();
+    openChatWithUser(userId);
+  };
 }
 
 // ─── Count ────────────────────────────────────────────────────────────────────
@@ -587,7 +763,7 @@ function requestCard(user, connectionId) {
   const cid = esc(connectionId);
 
   return `
-    <article class="hm-card hm-mate" aria-label="Connection request from ${esc(user.full_name)}">
+    <article class="hm-card hm-mate${user.plus_member ? ' hm-mate--plus' : ''}" aria-label="Connection request from ${esc(user.full_name)}">
 
       <div class="hm-mate__head">
         <div class="hm-avatar hm-avatar--card"
@@ -597,7 +773,8 @@ function requestCard(user, connectionId) {
           <p class="hm-mate__name">${esc(user.full_name)}</p>
           <div class="hm-mate__badges">
             ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
-            <span class="hm-badge hm-badge--verified">✓ Verified</span>
+            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Admit card verified">✓ Verified</span>` : ''}
+            ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>
       </div>
@@ -638,7 +815,6 @@ function requestCard(user, connectionId) {
             data-conn-action="accept"  data-user-id="${uid}" data-conn-id="${cid}">Accept</button>
         </div>
       </div>
-
     </article>`;
 }
 
@@ -678,6 +854,18 @@ function populateModal(user) {
   badge.textContent = user.gender || '';
   badge.className   = `hm-badge ${cls}`.trim();
   badge.hidden      = !user.gender;
+
+  // Gap 4: Plus badge in modal
+  const plusBadgeEl = document.getElementById('hm-modal-plus-badge');
+  if (plusBadgeEl) plusBadgeEl.hidden = !user.plus_member;
+
+  // Only show verified badge for admit-card-verified users
+  const verifiedBadgeEl = document.getElementById('hm-modal-verified-badge');
+  if (verifiedBadgeEl) {
+    verifiedBadgeEl.hidden = !user.is_verified_aspirant;
+    verifiedBadgeEl.className = 'hm-badge hm-badge--verified-full';
+    verifiedBadgeEl.title = 'Admit card verified';
+  }
 
   // Reset phone + reveal section
   const phoneEl  = document.getElementById('hm-modal-phone');
@@ -725,8 +913,8 @@ function renderModalActions() {
 
     case REL.CONNECTED:
       actionsEl.innerHTML = `
-        <button class="hm-btn hm-btn--soft hm-btn--block"
-          data-conn-action="reveal">📞 Reveal Contact</button>`;
+        <button class="hm-btn hm-btn--primary hm-btn--block"
+          data-conn-action="open-chat" data-user-id="${uid}">💬 Open Chat</button>`;
       if (privacyEl) privacyEl.hidden = true;
       break;
 
@@ -820,7 +1008,7 @@ function mateCard(user, idx) {
   const hasBadges   = !!(travelLabel || stayLabel);
 
   return `
-    <article class="hm-card hm-mate hm-card--interactive"
+    <article class="hm-card hm-mate hm-card--interactive${user.plus_member ? ' hm-mate--plus' : ''}"
       data-idx="${idx}" tabindex="0" role="button"
       aria-label="View ${esc(user.full_name)}'s profile">
 
@@ -835,7 +1023,8 @@ function mateCard(user, idx) {
             ${user.gender
               ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>`
               : ''}
-            <span class="hm-badge hm-badge--verified">✓ Verified</span>
+            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Admit card verified">✓ Verified</span>` : ''}
+            ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>
       </div>
