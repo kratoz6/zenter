@@ -335,6 +335,10 @@ function appendMessage(msg) {
   const conv = conversations.find(c => c.id === msg.conversation_id);
   if (conv) {
     conv.updated_at = new Date().toISOString();
+    // Sender's own messages should never show as unread
+    if (msg.sender_id === myUserId || msg.conversation_id === activeConvId) {
+      markAsRead(msg.conversation_id);
+    }
     conversations.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     renderChatList();
   }
