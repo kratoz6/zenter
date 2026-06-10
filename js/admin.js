@@ -755,13 +755,12 @@ async function loadCoupons() {
 
   el.innerHTML = `<table class="adm-table">
     <thead><tr>
-      <th>Code</th><th>Price</th><th>Label</th><th>Uses</th><th>Status</th><th>Actions</th>
+      <th>Code</th><th>Price</th><th>Uses</th><th>Status</th><th>Actions</th>
     </tr></thead>
     <tbody>${data.map(c => `
       <tr ${!c.is_active ? 'style="opacity:0.5;"' : ''}>
         <td><code style="font-family:monospace;font-weight:700;">${esc(c.code)}</code></td>
         <td>₹${(c.discounted_paise/100).toFixed(c.discounted_paise % 100 === 0 ? 0 : 2)}</td>
-        <td style="font-size:12px;color:var(--adm-text-muted);">${esc(c.label || '—')}</td>
         <td>${c.usage_count}${c.max_uses ? ` / ${c.max_uses}` : ''}</td>
         <td>
           ${c.is_active
@@ -784,7 +783,8 @@ async function loadCoupons() {
       const code = btn.dataset.couponToggle;
       const isActive = btn.dataset.active === 'true';
       btn.disabled = true;
-      const { error } = await q(f('coupons').update({ is_active: !isActive }).eq('code', code));
+      const { supabase: sb } = await import('./supabase.js');
+      const { error } = await sb.rpc('admin_toggle_coupon', { p_code: code, p_active: !isActive });
       if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
       toast(`Coupon ${!isActive ? 'enabled' : 'disabled'} ✓`, 'success');
       await loadCoupons();
@@ -800,7 +800,8 @@ async function loadCoupons() {
         msg: 'This action cannot be undone.',
         danger: true,
       }, async () => {
-        const { error } = await q(f('coupons').delete().eq('code', code));
+        const { supabase: sb } = await import('./supabase.js');
+        const { error } = await sb.rpc('admin_delete_coupon', { p_code: code });
         if (error) { toast('Error: ' + error.message, 'error'); return; }
         toast('Coupon deleted ✓', 'success');
         await loadCoupons();
@@ -829,11 +830,6 @@ function openCouponForm(existing) {
           <p style="font-size:11px;color:var(--adm-text-dim);margin:4px 0 0;">User pays this amount when coupon is applied.</p>
         </div>
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--adm-text-muted);display:block;margin-bottom:4px;">Label (optional)</label>
-          <input type="text" id="cp-label" class="adm-search" placeholder="e.g. Summer special — ₹9"
-                 style="width:100%;padding:10px;" value="${existing ? esc(existing.label || '') : ''}" maxlength="100" />
-        </div>
-        <div>
           <label style="font-size:12px;font-weight:600;color:var(--adm-text-muted);display:block;margin-bottom:4px;">Max Uses (optional)</label>
           <input type="number" id="cp-max-uses" class="adm-search" placeholder="Unlimited" min="1" step="1"
                  style="width:100%;padding:10px;" value="${existing?.max_uses || ''}" />
@@ -857,29 +853,22 @@ function openCouponForm(existing) {
   document.getElementById('cp-save').onclick = async () => {
     const code = (document.getElementById('cp-code').value || '').trim().toUpperCase();
     const price = parseInt(document.getElementById('cp-price').value, 10);
-    const label = document.getElementById('cp-label').value.trim() || null;
     const maxUses = parseInt(document.getElementById('cp-max-uses').value, 10) || null;
     const expires = document.getElementById('cp-expires').value || null;
 
     if (!code) { toast('Coupon code required', 'error'); return; }
     if (isNaN(price) || price < 0) { toast('Valid price required', 'error'); return; }
 
-    const payload = {
-      code,
-      discounted_paise: price * 100,
-      label,
-      max_uses: maxUses,
-      expires_at: expires ? new Date(expires).toISOString() : null,
-      is_active: true,
-    };
-
-    const { query: q, from: f } = await import('./supabase.js');
-    const { error } = existing
-      ? await q(f('coupons').update(payload).eq('code', existing.code))
-      : await q(f('coupons').insert(payload));
+    const { supabase: sb } = await import('./supabase.js');
+    const { error } = await sb.rpc('admin_upsert_coupon', {
+      p_code: code,
+      p_discounted_paise: price * 100,
+      p_max_uses: maxUses,
+      p_expires_at: expires ? new Date(expires).toISOString() : null,
+    });
 
     if (error) {
-      toast(error.message?.includes('duplicate') ? 'Coupon code already exists' : 'Error: ' + error.message, 'error');
+      toast('Error: ' + error.message, 'error');
       return;
     }
     toast(`Coupon ${existing ? 'updated' : 'created'} ✓`, 'success');
