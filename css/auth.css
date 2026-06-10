@@ -90,3 +90,30 @@
   border:   0;
 }
 .grecaptcha-badge { visibility: hidden !important; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+/* Tablet (≤991px): single column, hide aside */
+@media (max-width: 991.98px) {
+  .hm-auth { grid-template-columns: 1fr; }
+  .hm-auth__aside { display: none; }
+  .hm-auth__panel { padding: var(--hm-space-5) var(--hm-space-4); }
+}
+
+/* Phone (≤767px): compact card */
+@media (max-width: 767.98px) {
+  .hm-auth__card {
+    padding: var(--hm-space-5);
+    border-radius: var(--hm-radius-lg);
+    box-shadow: none;
+    border: none;
+  }
+  .hm-auth__title { font-size: var(--hm-text-xl); }
+  .hm-auth__panel { padding: var(--hm-space-3); }
+}
+
+/* Small phone (≤479px) */
+@media (max-width: 479.98px) {
+  .hm-auth__card { padding: var(--hm-space-4); }
+  .hm-steps { gap: var(--hm-space-1); }
+}

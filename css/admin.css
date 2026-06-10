@@ -480,3 +480,26 @@ body.adm-body {
   transition: background 120ms, color 120ms;
 }
 .adm-topbar__back:hover { background: var(--adm-surface-2); color: var(--adm-text); }
+
+/* ── Tablet (≤1024px) ──────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  :root { --adm-sidebar-w: 180px; }
+  .adm-brand__tag { display: none; }
+  .adm-stats { grid-template-columns: repeat(2, 1fr); }
+  .adm-settings-grid { grid-template-columns: 1fr; }
+  .adm-exams-grid { grid-template-columns: 1fr; }
+  .adm-table { font-size: 12px; }
+  .adm-table th, .adm-table td { padding: 8px 10px; }
+}
+
+/* ── Small phone (≤479px) ──────────────────────────────────────────────── */
+@media (max-width: 479px) {
+  :root { --adm-sidebar-w: 0px; }
+  .adm-sidebar { display: none; }
+  .adm-content { padding: 12px; }
+  .adm-topbar { padding: 8px 12px; }
+  .adm-stats { grid-template-columns: 1fr; }
+  .adm-h1 { font-size: 18px; }
+  .adm-table { font-size: 11px; }
+  .adm-table th, .adm-table td { padding: 6px 8px; }
+}

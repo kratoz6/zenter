@@ -109,6 +109,21 @@
     .plus-compare .check { color: #16a34a; font-size: 18px; display: block; text-align: center; }
     .plus-compare .cross { color: #94a3b8; font-size: 18px; display: block; text-align: center; }
     .plus-compare .col-plus { color: var(--hm-primary); font-weight: 700; }
+
+    /* Responsive */
+    @media (max-width: 767px) {
+      .plus-hero { padding: var(--hm-space-5) var(--hm-space-3) var(--hm-space-4); }
+      .plus-price { font-size: 36px; }
+      .plus-price span { font-size: 16px; }
+      .plus-features li { font-size: 14px; padding: 8px 0; }
+      .plus-compare table { font-size: 13px; }
+      .plus-compare th, .plus-compare td { padding: 10px 8px; }
+    }
+    @media (max-width: 479px) {
+      .plus-price { font-size: 30px; }
+      .plus-compare table { font-size: 12px; }
+      .plus-compare th, .plus-compare td { padding: 8px 6px; }
+    }
   </style>
 </head>
 <body>
