@@ -1207,13 +1207,13 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
-  // ── Verify / Unverify Aspirant (admit card) ──────────────────────────────
+  // ── Verify / Unverify Aspirant (Roll No) ─────────────────────────────────
   if (action === 'verify-aspirant' || action === 'unverify-aspirant') {
     const verifying = action === 'verify-aspirant';
     const userName  = btn.dataset.name || 'this user';
     confirm_({
-      title: verifying ? `Verify admit card for ${esc(userName)}?` : `Remove verification for ${esc(userName)}?`,
-      msg:   verifying ? 'Grants full green Verified badge — confirm admit card has been checked.' : 'Downgrades to phone-only verification.',
+      title: verifying ? `Verify Roll No for ${esc(userName)}?` : `Remove verification for ${esc(userName)}?`,
+      msg:   verifying ? 'Grants full green Verified badge — confirm Roll Number has been checked.' : 'Downgrades to phone-only verification.',
       danger: !verifying,
     }, async () => {
       btn.disabled = true;
@@ -1223,7 +1223,7 @@ document.addEventListener('click', async (e) => {
       const u = allUsers.find(u => u.id === id);
       if (u) u.is_verified_aspirant = verifying;
       renderFilteredUsers();
-      toast(verifying ? `✓ Admit card verified for ${esc(userName)} ✓` : `Verification removed ✓`, 'success');
+      toast(verifying ? `✓ Roll No verified for ${esc(userName)} ✓` : `Verification removed ✓`, 'success');
     }); return;
   }
 
@@ -1413,7 +1413,7 @@ function renderUsersTable(users, withActions = false) {
         </button>
         <button class="adm-btn adm-btn--sm ${u.is_verified_aspirant ? 'adm-btn--warn' : 'adm-btn--ok'}"
           data-action="${u.is_verified_aspirant ? 'unverify-aspirant' : 'verify-aspirant'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
-          ${u.is_verified_aspirant ? 'Unverify' : 'Verify admit'}
+          ${u.is_verified_aspirant ? 'Unverify' : 'Verify Roll No'}
         </button>
         ${u.verification_requested && !u.is_verified_aspirant
           ? `<button class="adm-btn adm-btn--sm adm-btn--danger"

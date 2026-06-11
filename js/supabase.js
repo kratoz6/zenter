@@ -582,7 +582,7 @@ export function trackEvent(eventName, userId, properties = {}) {
   );
 }
 
-/** Grant or revoke Verified Aspirant status (admit card verified by admin). */
+/** Grant or revoke Verified Aspirant status (Roll No verified by admin). */
 export function adminSetVerifiedAspirant(targetId, isVerified) {
   const updates = isVerified
     ? { is_verified_aspirant: true,  verification_requested: false, verification_rejected: false }
@@ -590,7 +590,7 @@ export function adminSetVerifiedAspirant(targetId, isVerified) {
   return query(from('users').update(updates).eq('id', targetId).select('id').single());
 }
 
-/** User submits NTA application number and requests verification. */
+/** User submits Roll Number and requests verification. */
 export function requestAdmitCardVerification(phone, ntaNumber) {
   return query(
     from('users')

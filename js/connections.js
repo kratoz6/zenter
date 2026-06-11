@@ -28,6 +28,7 @@ import {
 import { formatPhonePretty }     from './utils.js';
 
 let _myUserId = null;
+let _myVerified = false; // whether current user has verified Roll No
 let _exchangeMap = new Map(); // conversationId → exchange status
 let _convByOtherUser = new Map(); // otherUserId → conversationId
 
@@ -84,6 +85,7 @@ export async function runConnections(root, firebaseUser) {
   // Sent requests section removed — users manage outgoing requests from Find Mates.
 
   _myUserId = me.id;
+  _myVerified = me.is_verified_aspirant === true;
 
   // Only fetch profiles for accepted connections — received requests use a count link.
   const otherIds = [...new Set(
@@ -224,7 +226,7 @@ function cardHead(user) {
         <div class="hm-mate__badges">
           ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
           ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
-          ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Admit card verified">✓ Verified</span>` : ''}
+          ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Roll No verified">✓ Verified</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -375,6 +377,17 @@ function wireExchangeButtons(root) {
       return;
     }
 
+    // Check pending exchange status before applying verification gate.
+    // If WE are responder accepting, allow (verification was required to initiate).
+    const pendingExchange = _exchangeMap.get(convId);
+    const isResponderAccepting = pendingExchange?.status === 'pending' && pendingExchange.responder_id === _myUserId;
+
+    // Gate: must verify Roll No before initiating a new contact exchange.
+    if (!_myVerified && !isResponderAccepting) {
+      showRollNoVerifyPrompt('connection');
+      return;
+    }
+
     btn.disabled = true;
     const origText = btn.textContent;
     btn.textContent = 'Sending…';
@@ -417,6 +430,48 @@ function wireExchangeButtons(root) {
 }
 
 // ─── Small helpers ─────────────────────────────────────────────────────────
+
+/** Show a prompt asking the user to verify Roll No before they can reveal contacts. */
+function showRollNoVerifyPrompt(source) {
+  let overlay = document.getElementById('hm-rollno-verify-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hm-rollno-verify-overlay';
+    overlay.className = 'hm-modal-overlay';
+    overlay.style.zIndex = '1060';
+    overlay.innerHTML = `
+      <div class="hm-modal" role="document" style="max-width:420px;padding:var(--hm-space-6);">
+        <div style="font-size:2rem;text-align:center;margin-bottom:var(--hm-space-3);">🛡️</div>
+        <h3 style="margin:0 0 var(--hm-space-3);text-align:center;font-size:var(--hm-text-lg);">
+          Verify your Roll No first
+        </h3>
+        <p style="margin:0 0 var(--hm-space-5);color:var(--hm-text-muted);font-size:var(--hm-text-sm);line-height:1.65;text-align:center;">
+          To exchange contact details, please verify your Roll Number on your profile page.
+          This builds trust between aspirants and keeps the community safe.
+        </p>
+        <a href="/profile.html#hm-verification-section" class="hm-btn hm-btn--primary" style="width:100%;display:block;text-align:center;text-decoration:none;margin-bottom:var(--hm-space-2);">
+          Verify Roll No →
+        </a>
+        <button type="button" class="hm-btn hm-btn--ghost" id="hm-rollno-verify-close" style="width:100%;">
+          Maybe later
+        </button>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#hm-rollno-verify-close').addEventListener('click', () => {
+      overlay.classList.remove('is-open');
+      document.body.style.overflow = '';
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+      }
+    });
+  }
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+  trackEvent('rollno_verify_prompt_shown', _myUserId, { source });
+}
 
 const AVATAR_COLORS = [
   '#7C3AED', '#2563EB', '#059669', '#D97706',

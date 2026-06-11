@@ -24,6 +24,7 @@ let myExamTypeForFeed     = null;   // null for admins (all exams), else same as
 let myExamCentreState     = null;   // state-level matching boundary
 let myPlusMember          = false;  // Zenter Plus membership
 let myRevealsUsed         = 0;      // contact reveals used so far
+let myIsVerified          = false;  // whether current user has verified Roll No
 let myFreeLimit           = 2;      // from platform_config
 let myPlusEnabled         = true;   // whether Plus gating is active
 let revealedUserIds       = new Set(); // Gap 1: client-side revealed set prevents re-incrementing
@@ -96,6 +97,7 @@ async function init() {
   // Zenter Plus state
   myPlusMember  = me?.plus_member === true;
   myRevealsUsed = me?.contact_reveals_used || 0;
+  myIsVerified  = me?.is_verified_aspirant === true;
 
   // Populate the district filter dropdown with districts from the user's exam state.
   // Admin has no state boundary so show all districts (sorted A-Z).
@@ -373,7 +375,7 @@ async function activateTab(name) {
             badge.textContent = unread;
             badge.hidden = unread === 0;
           }
-        });
+        }, { isVerified: myIsVerified });
       }
     } else if (_chatsDirty) {
       _chatsDirty = false;
@@ -799,7 +801,7 @@ function requestCard(user, connectionId) {
           <p class="hm-mate__name">${esc(user.full_name)}</p>
           <div class="hm-mate__badges">
             ${user.gender ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>` : ''}
-            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Admit card verified">✓ Verified</span>` : ''}
+            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Roll No verified">✓ Verified</span>` : ''}
             ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>
@@ -890,7 +892,7 @@ function populateModal(user) {
   if (verifiedBadgeEl) {
     verifiedBadgeEl.hidden = !user.is_verified_aspirant;
     verifiedBadgeEl.className = 'hm-badge hm-badge--verified-full';
-    verifiedBadgeEl.title = 'Admit card verified';
+    verifiedBadgeEl.title = 'Roll No verified';
   }
 
   // Reset phone + reveal section
@@ -1049,7 +1051,7 @@ function mateCard(user, idx) {
             ${user.gender
               ? `<span class="hm-badge ${genderCls}">${esc(user.gender)}</span>`
               : ''}
-            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Admit card verified">✓ Verified</span>` : ''}
+            ${user.is_verified_aspirant ? `<span class="hm-badge hm-badge--verified-full" title="Roll No verified">✓ Verified</span>` : ''}
             ${user.plus_member ? `<span class="hm-badge hm-badge--plus">⭐ Plus</span>` : ''}
           </div>
         </div>

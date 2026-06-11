@@ -184,7 +184,7 @@ function hydrateAll() {
     if (plusUpgrade) plusUpgrade.hidden = false;
   }
 
-  // Admit card verification section
+  // Roll No verification section
   const verSection   = document.getElementById('hm-verification-section');
   const verifiedEl   = document.getElementById('hm-verified-state');
   const pendingEl    = document.getElementById('hm-pending-state');
@@ -541,11 +541,11 @@ function renderPauseState() {
 function wireAccountActions() {
   renderPauseState();
 
-  // ── Admit Card Verification Request ──────────────────────────────────────
+  // ── Roll No Verification Request ─────────────────────────────────────────
   document.getElementById('hm-request-verify')?.addEventListener('click', async () => {
     const ntaVal = document.getElementById('hm-nta-number')?.value?.trim();
     if (!ntaVal || ntaVal.length < 4) {
-      toast('Please enter a valid NTA Application Number.', { variant: 'danger' }); return;
+      toast('Please enter a valid Roll Number.', { variant: 'danger' }); return;
     }
     const btn = document.getElementById('hm-request-verify');
     btn.disabled = true; btn.textContent = 'Submitting…';

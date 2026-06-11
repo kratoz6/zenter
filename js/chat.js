@@ -12,6 +12,7 @@ import {
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let myUserId = null;
+let myIsVerified = false;     // whether current user has verified Roll No
 let conversations = [];       // { id, connection_id, user_a, user_b, updated_at, otherUser }
 let activeConvId = null;       // currently open conversation
 let messages = [];             // messages for the active conversation
@@ -36,8 +37,9 @@ let STORAGE_KEY = STORAGE_KEY_BASE; // updated to per-user in mountChat
  * @param {Map} usersMap — all known users keyed by id (from dashboard)
  * @param {Function} [unreadCb] — called with total unread count
  */
-export async function mountChat(container, userId, usersMap, unreadCb) {
+export async function mountChat(container, userId, usersMap, unreadCb, opts = {}) {
   myUserId = userId;
+  myIsVerified = !!opts.isVerified;
   allUsersMap = usersMap || new Map();
   onUnreadChange = unreadCb || null;
 
@@ -502,6 +504,12 @@ async function loadExchangeStatus(convId) {
 }
 
 async function handleExchangeRequest(convId) {
+  // Gate: must verify Roll No before requesting contact
+  if (!myIsVerified) {
+    showRollNoVerifyPrompt('request');
+    return;
+  }
+
   const btn = document.getElementById('hm-exchange-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Requesting…'; }
 
@@ -514,6 +522,48 @@ async function handleExchangeRequest(convId) {
 
   trackEvent('contact_exchange_requested', myUserId, { conversation_id: convId });
   await loadExchangeStatus(convId);
+}
+
+/** Show a prompt asking the user to verify Roll No before they can reveal contacts. */
+function showRollNoVerifyPrompt(source) {
+  let overlay = document.getElementById('hm-rollno-verify-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'hm-rollno-verify-overlay';
+    overlay.className = 'hm-modal-overlay';
+    overlay.style.zIndex = '1060';
+    overlay.innerHTML = `
+      <div class="hm-modal" role="document" style="max-width:420px;padding:var(--hm-space-6);">
+        <div style="font-size:2rem;text-align:center;margin-bottom:var(--hm-space-3);">🛡️</div>
+        <h3 style="margin:0 0 var(--hm-space-3);text-align:center;font-size:var(--hm-text-lg);">
+          Verify your Roll No first
+        </h3>
+        <p style="margin:0 0 var(--hm-space-5);color:var(--hm-text-muted);font-size:var(--hm-text-sm);line-height:1.65;text-align:center;">
+          To reveal contact details, please verify your Roll Number on your profile page.
+          This builds trust between aspirants and keeps the community safe.
+        </p>
+        <a href="/profile.html#hm-verification-section" class="hm-btn hm-btn--primary" style="width:100%;display:block;text-align:center;text-decoration:none;margin-bottom:var(--hm-space-2);">
+          Verify Roll No →
+        </a>
+        <button type="button" class="hm-btn hm-btn--ghost" id="hm-rollno-verify-close" style="width:100%;">
+          Maybe later
+        </button>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#hm-rollno-verify-close').addEventListener('click', () => {
+      overlay.classList.remove('is-open');
+      document.body.style.overflow = '';
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('is-open');
+        document.body.style.overflow = '';
+      }
+    });
+  }
+  overlay.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+  trackEvent('rollno_verify_prompt_shown', myUserId, { source });
 }
 
 // ─── Unread tracking ─────────────────────────────────────────────────────────
