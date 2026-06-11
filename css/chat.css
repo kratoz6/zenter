@@ -346,6 +346,8 @@
   /* When a chat is open on mobile, make it fixed fullscreen — no page scroll */
   .hm-chat-layout.has-active-chat {
     position: fixed;
+    display: flex;
+    flex-direction: column;
     top: var(--hm-navbar-h);
     left: 0;
     right: 0;
