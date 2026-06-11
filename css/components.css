@@ -629,6 +629,7 @@
 
 /* Wrapper: pull it flush with the bottom of the page's top padding */
 .hm-exam-selector-wrap {
+  padding-top: var(--hm-space-4);
   padding-bottom: var(--hm-space-6);
 }
 
