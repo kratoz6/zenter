@@ -1,7 +1,9 @@
 /* HallMate — Dashboard + profile page styling. */
 
-/* Remove default page padding at top for dashboard (tabs start immediately) */
-#hm-main { padding-top: 0; }
+/* Remove default page padding at top only on dashboard (tabs start immediately).
+   :has(.hm-tabs) scopes this to the dashboard main element so it doesn't strip
+   padding from the landing page (which shares id="hm-main"). */
+#hm-main:has(.hm-tabs) { padding-top: 0; }
 
 /* ── Connections page — received requests link banner ───────────────────── */
 .hm-conn-requests-link {
