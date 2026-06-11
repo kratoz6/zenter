@@ -302,7 +302,7 @@ async function loadAnnouncementBar(route) {
     bar.setAttribute('aria-label', 'Announcements');
     // Each span includes a trailing separator so the loop join is seamless —
     // the gap between repetitions is just the "   ·   " characters, not padding.
-    const unit = `📢 ${safe}   ·   `;
+    const unit = `${safe}   ·   `;
     bar.innerHTML = `
       <div class="hm-announcement-bar__ticker">
         <span class="hm-announcement-bar__text">${unit}</span>
