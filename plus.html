@@ -331,7 +331,7 @@
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script type="module">
     import { requireOnboarded } from '/js/auth.js';
-    import { getUserByPhone, trackEvent, createRazorpayOrder, verifyRazorpayPayment } from '/js/supabase.js';
+    import { getUserByPhone, trackEvent, createRazorpayOrder, verifyRazorpayPayment, query, from } from '/js/supabase.js';
 
     let appliedCoupon = null;
 
@@ -341,6 +341,14 @@
 
       const { data: me } = await getUserByPhone(firebaseUser.phoneNumber);
       if (!me) return;
+
+      // Check if Plus is enabled
+      const { data: cfgRows } = await query(from('platform_config').select('key,value'));
+      const plusEnabled = cfgRows?.find(r => r.key === 'plus_enabled')?.value !== false;
+      if (!plusEnabled) {
+        document.body.innerHTML = '<div style="text-align:center;padding:40px 20px;"><p style="font-size:18px;margin-bottom:20px;">Zenter Plus is not available right now.</p><a href="/dashboard.html" style="color:#FF6B35;text-decoration:none;font-weight:600;">← Back to Dashboard</a></div>';
+        return;
+      }
 
       const btn           = document.getElementById('hm-buy-plus');
       const status        = document.getElementById('hm-plus-pay-status');
