@@ -629,7 +629,7 @@
 
 /* Wrapper: pull it flush with the bottom of the page's top padding */
 .hm-exam-selector-wrap {
-  padding-bottom: var(--hm-space-2);
+  padding-bottom: var(--hm-space-6);
 }
 
 /* Pill row: centered on desktop, horizontally scrollable on mobile */
