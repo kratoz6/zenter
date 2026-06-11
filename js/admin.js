@@ -656,9 +656,8 @@ async function loadPlus() {
 
       <!-- Pricing Card -->
       <div class="adm-card">
-        <div class="adm-card__header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="adm-card__header">
           <span>💳 Pricing Tiers</span>
-          <button class="adm-btn adm-btn--ok adm-btn--sm" id="adm-add-pricing">+ New Tier</button>
         </div>
         <div class="adm-card__body" id="adm-pricing-list" style="padding:16px 20px;">
           <div class="adm-empty" style="padding:24px;">Loading…</div>
@@ -682,7 +681,6 @@ async function loadPlus() {
   await loadPricingTiers();
   await loadCoupons();
   document.getElementById('adm-add-coupon')?.addEventListener('click', () => openCouponForm(null));
-  document.getElementById('adm-add-pricing')?.addEventListener('click', () => openPricingForm(null));
 }
 
 function wireUpPlusSettings() {
