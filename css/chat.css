@@ -112,6 +112,9 @@
   border-bottom: 1px solid var(--hm-border);
   background: var(--hm-surface);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 .hm-chat-header__back {
   background: none;
@@ -216,6 +219,9 @@
   border-top: 1px solid var(--hm-border);
   background: var(--hm-surface);
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 .hm-chat-composer__input {
   flex: 1;
@@ -346,8 +352,6 @@
   /* When a chat is open on mobile, make it fixed fullscreen — no page scroll */
   .hm-chat-layout.has-active-chat {
     position: fixed;
-    display: flex;
-    flex-direction: column;
     top: var(--hm-navbar-h);
     left: 0;
     right: 0;
@@ -364,7 +368,7 @@
     display: inline-flex;
   }
   .hm-chat-layout.has-active-chat .hm-chat-window {
-    height: 100%;
+    height: calc(100vh - var(--hm-navbar-h) - 180px);
     border-radius: 0;
     border: none;
   }
