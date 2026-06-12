@@ -77,5 +77,43 @@
   text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
 }
 
-/* reCAPTCHA is disabled — container kept in HTML but hidden. */
-#hm-recaptcha-container { display: none; }
+/* reCAPTCHA: invisible mode (production). The container must exist in the DOM
+   so the SDK can render its iframe, but it takes no visual space — kept
+   absolute + 0x0 so its in-flow position inside the phone form leaves no
+   whitespace. The floating bottom-right badge is also hidden; reCAPTCHA
+   usage is disclosed in the Privacy Policy per Google's terms. */
+#hm-recaptcha-container {
+  position: absolute;
+  width:    0;
+  height:   0;
+  overflow: hidden;
+  border:   0;
+}
+.grecaptcha-badge { visibility: hidden !important; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+/* Tablet (≤991px): single column, hide aside */
+@media (max-width: 991.98px) {
+  .hm-auth { grid-template-columns: 1fr; }
+  .hm-auth__aside { display: none; }
+  .hm-auth__panel { padding: var(--hm-space-5) var(--hm-space-4); }
+}
+
+/* Phone (≤767px): compact card */
+@media (max-width: 767.98px) {
+  .hm-auth__card {
+    padding: var(--hm-space-5);
+    border-radius: var(--hm-radius-lg);
+    box-shadow: none;
+    border: none;
+  }
+  .hm-auth__title { font-size: var(--hm-text-xl); }
+  .hm-auth__panel { padding: var(--hm-space-3); }
+}
+
+/* Small phone (≤479px) */
+@media (max-width: 479.98px) {
+  .hm-auth__card { padding: var(--hm-space-4); }
+  .hm-steps { gap: var(--hm-space-1); }
+}

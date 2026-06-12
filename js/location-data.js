@@ -1007,7 +1007,7 @@ export const DISTRICTS_BY_STATE = {
  */
 export function populateStateSelect(stateEl, { defaultLabel = 'Select state…' } = {}) {
   stateEl.innerHTML = `<option value="">${defaultLabel}</option>`;
-  STATES.forEach(s => {
+  [...STATES].sort((a, b) => a.localeCompare(b)).forEach(s => {
     const o = document.createElement('option');
     o.value = o.textContent = s;
     stateEl.appendChild(o);

@@ -2,9 +2,24 @@
 // Loaded only from onboarding.html.
 
 import { requireAuth } from './auth.js';
-import { upsertUser } from './supabase.js';
+import { upsertUser, saveDeviceFingerprint } from './supabase.js';
+
+function getDeviceFingerprint() {
+  try {
+    const parts = [
+      navigator.userAgent,
+      `${screen.width}x${screen.height}`,
+      screen.colorDepth,
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      navigator.language,
+    ].join('|');
+    let h = 0;
+    for (let i = 0; i < parts.length; i++) { h = Math.imul(31, h) + parts.charCodeAt(i) | 0; }
+    return Math.abs(h).toString(36);
+  } catch { return null; }
+}
 import { setButtonBusy } from './ui.js';
-import { ROUTES } from './config.js';
+import { ROUTES, STORAGE_KEYS } from './config.js';
 import { populateStateSelect, wireDistrictCascade } from './location-data.js';
 
 let firebaseUser = null;
@@ -57,18 +72,60 @@ async function init() {
     goToStep(3);
   });
 
-  document.getElementById('hm-form-step3').addEventListener('submit', async (e) => {
+  document.getElementById('hm-form-step3').addEventListener('submit', (e) => {
     e.preventDefault();
+    // Only state + district are required — exam centre name is optional and
+    // exam_type is no longer collected during onboarding (kept in DB for
+    // backward compatibility with existing users).
     if (!validate([
+      { id: 'hm-exam-type',     errId: 'hm-err-exam-type',     msg: 'Please select your exam type.' },
       { id: 'hm-exam-state',    errId: 'hm-err-exam-state',    msg: 'Select your exam centre state.' },
       { id: 'hm-exam-district', errId: 'hm-err-exam-district', msg: 'Select your exam centre district.' },
-      { id: 'hm-exam-center',   errId: 'hm-err-exam-center',   msg: 'Enter your exam centre name.' },
     ])) return;
+    collected.exam_type            = val('hm-exam-type');
     collected.exam_centre_state    = val('hm-exam-state');
     collected.exam_centre_district = val('hm-exam-district');
-    collected.exam_center          = val('hm-exam-center');
-    collected.travel_mode          = val('hm-travel-mode')  || null;
-    collected.stay_plan            = val('hm-stay-plan')    || null;
+    collected.exam_center          = val('hm-exam-center') || null;
+    goToStep(4);
+  });
+
+  document.getElementById('hm-form-step4').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    collected.travel_mode = val('hm-travel-mode') || null;
+    collected.stay_plan   = val('hm-stay-plan')   || null;
+    openAgeModal();
+  });
+
+  wireAgeModal();
+}
+
+// ─── Age confirmation modal ──────────────────────────────────────────────────
+
+function openAgeModal() {
+  const overlay = document.getElementById('hm-age-modal');
+  if (!overlay) { saveProfile(); return; }
+  overlay.classList.add('is-open');
+}
+
+function closeAgeModal() {
+  document.getElementById('hm-age-modal')?.classList.remove('is-open');
+}
+
+function wireAgeModal() {
+  const overlay  = document.getElementById('hm-age-modal');
+  const checkbox = document.getElementById('hm-age-confirm-checkbox');
+  const confirm  = document.getElementById('hm-age-confirm');
+  const cancel   = document.getElementById('hm-age-cancel');
+  if (!overlay || !checkbox || !confirm || !cancel) return;
+
+  checkbox.addEventListener('change', () => {
+    confirm.disabled = !checkbox.checked;
+  });
+
+  cancel.addEventListener('click', closeAgeModal);
+
+  confirm.addEventListener('click', async () => {
+    closeAgeModal();
     await saveProfile();
   });
 }
@@ -82,17 +139,18 @@ async function saveProfile() {
   setButtonBusy(btn, true, 'Saving…');
 
   const { error } = await upsertUser({
-    phone:             firebaseUser.phoneNumber,
-    full_name:         collected.full_name,
-    gender:            collected.gender,
+    phone:                 firebaseUser.phoneNumber,
+    full_name:             collected.full_name,
+    gender:                collected.gender,
     state:                 collected.state,
     district:              collected.district,
+    exam_type:             collected.exam_type,
     exam_centre_state:     collected.exam_centre_state,
     exam_centre_district:  collected.exam_centre_district,
     exam_center:           collected.exam_center,
-    travel_mode:       collected.travel_mode,
-    stay_plan:         collected.stay_plan,
-    profile_completed: true,
+    travel_mode:           collected.travel_mode,
+    stay_plan:             collected.stay_plan,
+    profile_completed:     true,
   });
 
   if (error) {
@@ -101,6 +159,16 @@ async function saveProfile() {
     setButtonBusy(btn, false);
     return;
   }
+
+  // Save device fingerprint for multi-account detection (fire-and-forget)
+  try {
+    const { data: me } = await (await import('./supabase.js')).getUserByPhone(firebaseUser.phoneNumber);
+    const fp = getDeviceFingerprint();
+    if (me?.id && fp) saveDeviceFingerprint(me.id, fp);
+  } catch {/* non-critical */}
+
+  // Mark onboarding complete so guards + navbar update immediately on redirect.
+  try { sessionStorage.setItem(STORAGE_KEYS.profileCompleted, 'true'); } catch {}
 
   window.location.replace(ROUTES.dashboard);
 }

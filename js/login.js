@@ -1,19 +1,41 @@
 // HallMate — Login page OTP flow.
 // Loaded only from login.html. Handles: phone → send OTP → verify → post-login redirect.
 
-import { auth, createRecaptcha, signInWithPhoneNumber } from './firebase-config.js';
+import { auth, createRecaptcha, resetRecaptcha, signInWithPhoneNumber } from './firebase-config.js';
 import { handlePostLogin, redirectIfAuthed } from './auth.js';
 import { normalizePhoneIN } from './utils.js';
 import { setButtonBusy } from './ui.js';
+import { STORAGE_KEYS, ROUTES } from './config.js';
 
-let recaptchaVerifier = null;
 let confirmationResult = null;
 let resendTimer = null;
 
 // ─── Init ───────────────────────────────────────────────────────────────────
 
 async function init() {
-  await redirectIfAuthed(); // skip flow if already signed in
+  // FAST PATH — synchronous sessionStorage check. If the user is already
+  // authenticated (session cached from a previous visit), redirect instantly
+  // before the form ever renders. This eliminates the "login page flashes
+  // briefly then redirects" glitch (e.g. Contact Us → Back to Sign In).
+  try {
+    const cachedUser = sessionStorage.getItem(STORAGE_KEYS.authUser);
+    const completed  = sessionStorage.getItem(STORAGE_KEYS.profileCompleted);
+    if (cachedUser && completed === 'true') {
+      window.location.replace(ROUTES.dashboard);
+      return; // don't render or wire the form at all
+    }
+  } catch { /* sessionStorage unavailable in some private-mode browsers */ }
+
+  // ASYNC PATH — Firebase confirms the session (covers cold-start / no-cache).
+  // If there's any cached auth user (even without profileCompleted), hide the
+  // form while Firebase resolves to avoid a flash of the login UI before redirect.
+  const card = document.querySelector('.hm-auth__card');
+  try {
+    if (sessionStorage.getItem(STORAGE_KEYS.authUser) && card) card.hidden = true;
+  } catch {}
+
+  const redirected = await redirectIfAuthed();
+  if (!redirected && card) card.hidden = false; // not logged in — show the form
 
   document.getElementById('hm-form-phone').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -51,16 +73,11 @@ async function sendOtp() {
   setButtonBusy(btn, true, 'Sending…');
 
   try {
-    // Clear verifier AND its DOM node before recreating — avoids "already rendered" error.
-    if (recaptchaVerifier) {
-      try { recaptchaVerifier.clear(); } catch { /* ignore */ }
-      recaptchaVerifier = null;
-    }
-    const rcContainer = document.getElementById('hm-recaptcha-container');
-    if (rcContainer) rcContainer.innerHTML = '';
-    recaptchaVerifier = createRecaptcha('hm-recaptcha-container');
-
-    confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+    // Singleton verifier — same instance across retries. Firebase handles
+    // re-execution and token refresh internally; manual clear-on-every-click
+    // caused "already rendered" + flicker bugs in the previous version.
+    const verifier = createRecaptcha('hm-recaptcha-container');
+    confirmationResult = await signInWithPhoneNumber(auth, phone, verifier);
 
     document.getElementById('hm-otp-target').textContent = phone;
     showStep('otp');
@@ -68,8 +85,8 @@ async function sendOtp() {
     document.getElementById('hm-otp-1')?.focus();
   } catch (err) {
     console.error('[login] sendOtp', err);
-    try { recaptchaVerifier?.clear(); } catch { /* ignore */ }
-    recaptchaVerifier = null;
+    // Tear down the cached verifier so the next attempt gets a clean one.
+    resetRecaptcha();
     showError('phone', toMessage(err));
   } finally {
     setButtonBusy(btn, false);

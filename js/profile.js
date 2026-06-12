@@ -6,27 +6,41 @@
 //   2. Click "Save" → validate → upsertUser (Supabase) → re-render read view
 //   3. Click "Cancel" → restore read view from in-memory profileData (no fetch)
 
-import { requireAuth }                from './auth.js';
-import { getProfileByPhone, upsertUser } from './supabase.js';
-import { formatPhonePretty }           from './utils.js';
-import { STORAGE_KEYS }                from './config.js';
-import { setButtonBusy }               from './ui.js';
-import { STATES, wireDistrictCascade } from './location-data.js';
+import { requireOnboarded, logout }                    from './auth.js';
+import { getProfileByPhone, upsertUser,
+         setPausedStatus, deleteUserData }              from './supabase.js';
+import { formatPhonePretty }                           from './utils.js';
+import { STORAGE_KEYS, ROUTES }                        from './config.js';
+import { setButtonBusy, toast }                        from './ui.js';
+import { STATES, wireDistrictCascade }                 from './location-data.js';
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 let profilePhone = '';   // Firebase E.164 phone number
 let profileData  = {};   // Latest Supabase row; updated optimistically on save
 
 // ─── Option lists ─────────────────────────────────────────────────────────────
-const GENDER_OPTS = ['Female', 'Male', 'Prefer not to say'];
+const GENDER_OPTS = ['Male', 'Female', 'Other'];
 
 // STATES imported from location-data.js — single source of truth for all 36 entries.
 
-const TRAVEL_OPTS = ['By train', 'By flight', 'By bus', 'Self-drive', 'Other'];
+// Exam type is permanent per account — set once during onboarding and not
+// editable from the profile page. Kept in the DB for filtering only.
+
+const TRAVEL_OPTS = ['By train', 'By flight', 'By bus', 'Self-drive', 'Shared Cab', 'Other'];
+const TRAVEL_DISPLAY = {
+  'By train': '🚂 Train', 'By flight': '✈️ Flight', 'By bus': '🚌 Bus',
+  'Self-drive': '🚗 Self Drive', 'Shared Cab': '🚕 Shared Cab', 'Other': 'Yet to Decide',
+};
 
 const STAY_OPTS = [
   'Need accommodation', 'Have accommodation', 'Looking for room share', 'Other',
 ];
+const STAY_DISPLAY = {
+  'Need accommodation': '🏨 Need accommodation',
+  'Have accommodation': '🏠 Have accommodation',
+  'Looking for room share': '🛏️ Room share',
+  'Other': 'Yet to Decide',
+};
 
 // ─── Section configs ──────────────────────────────────────────────────────────
 // key         → matches Object.entries() key used to wire buttons
@@ -39,12 +53,16 @@ const SECTIONS = {
     editBtnId: 'hm-edit-about',
     fields: [
       {
+        // Permanent identity — locked once set (enforced in DB by a trigger too).
         key: 'full_name', ddId: 'hm-kv-name', type: 'text',
         placeholder: 'Your full name', prompt: 'Add your name', required: true,
+        locked: true,
       },
       {
+        // Permanent identity — locked once set.
         key: 'gender', ddId: 'hm-kv-gender', type: 'select',
         options: GENDER_OPTS, prompt: 'Add your gender',
+        locked: true,
       },
       {
         key: 'college', ddId: 'hm-kv-college', type: 'text',
@@ -60,17 +78,16 @@ const SECTIONS = {
       {
         key: 'exam_centre_state', ddId: 'hm-kv-exam-state', type: 'select',
         options: STATES, prompt: 'Add exam centre state',
-        fallback: 'state',     // show home state for old users without exam_centre_state
+        fallback: 'state',
       },
       {
-        // options: [] → populated dynamically by wireDistrictCascade after render
         key: 'exam_centre_district', ddId: 'hm-kv-exam-district', type: 'select',
         options: [], prompt: 'Add exam centre district',
-        fallback: 'district',  // show home district for old users without exam_centre_district
+        fallback: 'district',
       },
       {
         key: 'exam_center', ddId: 'hm-kv-exam-center', type: 'text',
-        placeholder: 'Centre name from admit card', prompt: 'Add your exam centre',
+        placeholder: 'e.g. Tirupati Medical College', prompt: 'Add your exam centre',
       },
     ],
   },
@@ -87,18 +104,13 @@ const SECTIONS = {
         key: 'stay_plan', ddId: 'hm-kv-stay', type: 'select',
         options: STAY_OPTS, prompt: 'Add your stay plan',
       },
-      {
-        key: 'bio', ddId: 'hm-kv-bio', type: 'textarea',
-        placeholder: 'Tell centre mates a little about yourself',
-        prompt: 'Add a short bio',
-      },
     ],
   },
 };
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 async function init() {
-  const firebaseUser = await requireAuth();
+  const firebaseUser = await requireOnboarded();
   if (!firebaseUser) return;
 
   profilePhone = firebaseUser.phoneNumber || '';
@@ -110,18 +122,37 @@ async function init() {
   // Show phone immediately (from Firebase, no Supabase latency)
   setText('hm-profile-phone', formatPhonePretty(profilePhone));
 
-  setAllLoading();
+  // Instant hydration from cache — eliminates field pop-in on repeat visits.
+  const cached = readProfileCache(profilePhone);
+  if (cached) { profileData = cached; hydrateAll(); }
+  else        { setAllLoading(); }
 
+  // Refresh from the server in the background, then re-hydrate.
   const { data, error } = await getProfileByPhone(profilePhone);
   if (error) {
-    console.error('[profile] load error', error);
-    setText('hm-profile-name', error.message || 'Could not load profile.');
-    return;
+    if (!cached) {
+      console.error('[profile] load error', error);
+      setText('hm-profile-name', error.message || 'Could not load profile.');
+      return;
+    }
+    console.warn('[profile] refresh failed — showing cached data', error);
+  } else {
+    profileData = data || {};
+    writeProfileCache(profilePhone, profileData);
+    hydrateAll();
   }
 
-  profileData = data || {};
-  hydrateAll();
   wireEditButtons();
+  wireAccountActions();
+
+  // Allow the navbar dropdown's "Pause profile" / "Delete account" deep-links
+  // (/profile.html#pause, /profile.html#delete) to open the existing modals.
+  const hash = (location.hash || '').slice(1).toLowerCase();
+  if (hash === 'pause')  document.getElementById('hm-pause-profile')?.click();
+  if (hash === 'delete') document.getElementById('hm-delete-account')?.click();
+  if (hash === 'pause' || hash === 'delete') {
+    history.replaceState(null, '', location.pathname);
+  }
 }
 
 // ─── Read-mode hydration ──────────────────────────────────────────────────────
@@ -142,6 +173,40 @@ function hydrateAll() {
   // Cache initials for the navbar avatar across all pages
   cacheInitials(name);
 
+  // Gap 5: show Plus badge or upgrade link
+  const plusStatus  = document.getElementById('hm-plus-status');
+  const plusUpgrade = document.getElementById('hm-plus-upgrade-link');
+  if (profileData.plus_member) {
+    if (plusStatus)  plusStatus.hidden  = false;
+    if (plusUpgrade) plusUpgrade.hidden = true;
+  } else {
+    if (plusStatus)  plusStatus.hidden  = true;
+    if (plusUpgrade) plusUpgrade.hidden = false;
+  }
+
+  // Roll No verification section
+  const verSection   = document.getElementById('hm-verification-section');
+  const verifiedEl   = document.getElementById('hm-verified-state');
+  const pendingEl    = document.getElementById('hm-pending-state');
+  const rejectedEl   = document.getElementById('hm-rejected-state');
+  const verFormEl    = document.getElementById('hm-verify-form');
+  const ntaInput     = document.getElementById('hm-nta-number');
+
+  if (verSection) {
+    verSection.hidden = false;
+    verifiedEl.hidden  = !profileData.is_verified_aspirant;
+    pendingEl.hidden   = !profileData.verification_requested || profileData.is_verified_aspirant;
+    rejectedEl.hidden  = !profileData.verification_rejected;
+    // Show form if not verified and not pending
+    verFormEl.hidden   = profileData.is_verified_aspirant || profileData.verification_requested;
+    // Pre-fill if previously submitted
+    if (ntaInput && profileData.nta_application_number) ntaInput.value = profileData.nta_application_number;
+  }
+
+  // Show verified badge callout only for non-verified users
+  const callout = document.getElementById('hm-verify-callout');
+  if (callout) callout.hidden = !!profileData.is_verified_aspirant;
+
   // All section fields
   Object.values(SECTIONS).forEach(sec => hydrateSection(sec));
 }
@@ -159,6 +224,7 @@ function hydrateSection(sec) {
 function setDd(ddId, value, prompt) {
   const dd = document.getElementById(ddId);
   if (!dd) return;
+  dd.classList.remove('hm-kv__locked'); // cleared on every (re)hydrate / exit-edit
   if (value) {
     dd.textContent = value;
     dd.classList.remove('hm-kv__empty');
@@ -227,6 +293,7 @@ async function saveAll(saveBtn) {
 
   // Optimistic merge
   Object.assign(profileData, updates);
+  writeProfileCache(profilePhone, profileData); // keep cache in sync for next visit
   if ('full_name' in updates) {
     const name = trimOrNull(profileData.full_name);
     setText('hm-profile-name', name || 'Your name');
@@ -255,6 +322,13 @@ function enterEditMode(sectionKey) {
   sec.fields.forEach(f => {
     const dd = document.getElementById(f.ddId);
     if (!dd) return;
+    // Permanent identity fields (name, gender) stay read-only ONCE set — they
+    // remain as plain text instead of becoming an input. Legacy users who never
+    // set the field can still fill it in once (then the DB trigger locks it).
+    if (f.locked && trimOrNull(profileData[f.key])) {
+      dd.classList.add('hm-kv__locked');
+      return;
+    }
     // Fallback to legacy field so old users see their existing data pre-filled
     const currentVal = trimOrNull(profileData[f.key])
                     ?? (f.fallback ? trimOrNull(profileData[f.fallback]) : null)
@@ -301,9 +375,14 @@ function buildInput(field, currentVal) {
     blank.value = ''; blank.textContent = 'Select…';
     blank.selected = !currentVal;
     el.appendChild(blank);
+    // Use pretty display labels for travel/stay options
+    const displayMap = field.key === 'travel_mode' ? TRAVEL_DISPLAY
+                     : field.key === 'stay_plan'   ? STAY_DISPLAY
+                     : null;
     (field.options || []).forEach(opt => {
       const o = document.createElement('option');
-      o.value = o.textContent = opt;
+      o.value = opt;
+      o.textContent = displayMap?.[opt] ?? opt;
       o.selected = (opt === currentVal);
       el.appendChild(o);
     });
@@ -397,6 +476,23 @@ function exitEditMode(sectionKey) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Lightweight per-tab profile cache (sessionStorage). Keyed by phone so a
+// different signed-in user never reads a stale row. Used for instant hydration.
+const PROFILE_CACHE_KEY = 'hm.profile.row';
+
+function readProfileCache(phone) {
+  try {
+    const obj = JSON.parse(sessionStorage.getItem(PROFILE_CACHE_KEY) || 'null');
+    return obj && obj.__phone === phone ? obj.data : null;
+  } catch { return null; }
+}
+
+function writeProfileCache(phone, data) {
+  try {
+    sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ __phone: phone, data }));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -412,7 +508,7 @@ function cacheInitials(name) {
     const initials = avatarInitials(name);
     sessionStorage.setItem(STORAGE_KEYS.profile, JSON.stringify({ initials }));
     const navAvatar = document.getElementById('hm-navbar-avatar');
-    if (navAvatar && initials !== 'HM') navAvatar.textContent = initials;
+    if (navAvatar && initials !== 'Z') navAvatar.textContent = initials;
   } catch { /* ignore — storage may be unavailable in private mode */ }
 }
 
@@ -424,8 +520,127 @@ function trimOrNull(v) {
 
 function avatarInitials(name) {
   const s = (name || '').trim();
-  if (!s) return 'HM';
+  if (!s) return 'Z';
   return s.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+// ─── Account actions: pause + delete ─────────────────────────────────────────
+
+function openModal(id)  { document.getElementById(id)?.classList.add('is-open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('is-open'); }
+
+/** Sync the Pause button label + paused notice with current profileData state. */
+function renderPauseState() {
+  const btn    = document.getElementById('hm-pause-profile');
+  const notice = document.getElementById('hm-paused-notice');
+  const paused = !!profileData.is_profile_paused;
+  if (btn)    btn.textContent = paused ? 'Reactivate profile' : 'Pause my profile';
+  if (notice) notice.hidden   = !paused;
+}
+
+function wireAccountActions() {
+  renderPauseState();
+
+  // ── Roll No Verification Request ─────────────────────────────────────────
+  document.getElementById('hm-request-verify')?.addEventListener('click', async () => {
+    const ntaVal = document.getElementById('hm-nta-number')?.value?.trim();
+    if (!ntaVal || ntaVal.length < 4) {
+      toast('Please enter a valid Roll Number.', { variant: 'danger' }); return;
+    }
+    const btn = document.getElementById('hm-request-verify');
+    btn.disabled = true; btn.textContent = 'Submitting…';
+    const { requestAdmitCardVerification } = await import('./supabase.js');
+    const { error } = await requestAdmitCardVerification(profilePhone, ntaVal);
+    btn.disabled = false; btn.textContent = 'Get Verified';
+    if (error) { toast(error.message || 'Could not submit. Please try again.', { variant: 'danger' }); return; }
+    profileData.nta_application_number = ntaVal;
+    profileData.verification_requested = true;
+    profileData.verification_rejected  = false;
+    hydrateAll(); // re-render to show pending state
+    toast(
+      'Request submitted. We\'ll review your details and mark your profile <span class="hm-badge hm-badge--verified-full" style="font-size:11px;padding:1px 6px;">✓ Verified</span> shortly.',
+      { variant: 'success', html: true }
+    );
+  });
+
+  // ── Pause / Reactivate ────────────────────────────────────────────────────
+  document.getElementById('hm-pause-profile')?.addEventListener('click', () => {
+    if (profileData.is_profile_paused) {
+      // Reactivate: no confirmation needed — just a beneficial toggle
+      doPauseToggle(false);
+    } else {
+      openModal('hm-modal-pause');
+    }
+  });
+
+  document.getElementById('hm-modal-pause-cancel')
+    ?.addEventListener('click', () => closeModal('hm-modal-pause'));
+
+  document.getElementById('hm-modal-pause')
+    ?.addEventListener('click', e => {
+      if (e.target.id === 'hm-modal-pause') closeModal('hm-modal-pause');
+    });
+
+  document.getElementById('hm-modal-pause-confirm')
+    ?.addEventListener('click', async () => {
+      const btn = document.getElementById('hm-modal-pause-confirm');
+      setButtonBusy(btn, true, 'Pausing…');
+      await doPauseToggle(true);
+      setButtonBusy(btn, false);
+      closeModal('hm-modal-pause');
+    });
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  document.getElementById('hm-delete-account')
+    ?.addEventListener('click', () => openModal('hm-modal-delete'));
+
+  document.getElementById('hm-modal-delete-cancel')
+    ?.addEventListener('click', () => closeModal('hm-modal-delete'));
+
+  document.getElementById('hm-modal-delete')
+    ?.addEventListener('click', e => {
+      if (e.target.id === 'hm-modal-delete') closeModal('hm-modal-delete');
+    });
+
+  document.getElementById('hm-modal-delete-confirm')
+    ?.addEventListener('click', async () => {
+      const btn = document.getElementById('hm-modal-delete-confirm');
+      setButtonBusy(btn, true, 'Deleting…');
+      await doDeleteAccount(btn);
+    });
+}
+
+async function doPauseToggle(pausing) {
+  const { error } = await setPausedStatus(profilePhone, pausing);
+  if (error) {
+    toast(error.message || 'Could not update profile. Please try again.', { variant: 'danger' });
+    return;
+  }
+  profileData.is_profile_paused = pausing;
+  renderPauseState();
+  toast(
+    pausing ? 'Profile paused — you\'re hidden from Find Mates.'
+            : 'Profile reactivated — you\'re visible again!',
+    { variant: pausing ? 'info' : 'success' }
+  );
+}
+
+async function doDeleteAccount(confirmBtn) {
+  if (!profileData.id) {
+    toast('Cannot delete — profile not loaded. Please refresh.', { variant: 'danger' });
+    setButtonBusy(confirmBtn, false);
+    return;
+  }
+
+  const { error } = await deleteUserData(profileData.id);
+  if (error) {
+    toast(error.message || 'Delete failed. Please try again.', { variant: 'danger' });
+    setButtonBusy(confirmBtn, false);
+    return;
+  }
+
+  // Sign out Firebase session then go to landing
+  await logout(ROUTES.landing);
 }
 
 document.addEventListener('DOMContentLoaded', init);

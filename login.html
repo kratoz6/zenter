@@ -4,8 +4,26 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#FF6B35" />
-  <title>Sign in — HallMate</title>
-  <meta name="description" content="Sign in to HallMate with your mobile number." />
+  <title>Sign in - Zenter</title>
+  <meta name="description" content="Sign in to Zenter and find NEET UG aspirants travelling to the same exam centre as you." />
+  <meta name="keywords" content="NEET UG login, Zenter sign in, Zenter login, exam centre mates" />
+  <meta name="author" content="Zenter" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://zenter.in/login.html" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Zenter" />
+  <meta property="og:url" content="https://zenter.in/login.html" />
+  <meta property="og:title" content="Sign in - Zenter" />
+  <meta property="og:description" content="Sign in to Zenter with your mobile number." />
+  <meta property="og:image" content="https://zenter.in/og-banner.svg" />
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Sign in - Zenter" />
+  <meta name="twitter:description" content="Sign in to Zenter with your mobile number." />
+  <meta name="twitter:image" content="https://zenter.in/og-banner.svg" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +35,7 @@
   <link href="/css/auth.css" rel="stylesheet" />
   <link href="/css/responsive.css" rel="stylesheet" />
 
-  <link rel="icon" href="/assets/logos/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/assets/logos/favicon.svg?v=2" type="image/svg+xml" />
 </head>
 <body>
   <div data-include="navbar"></div>
@@ -25,7 +43,7 @@
   <main class="hm-auth" id="hm-main">
     <section class="hm-auth__panel">
       <div class="hm-auth__card">
-        <h1 class="hm-auth__title">Welcome to HallMate</h1>
+        <h1 class="hm-auth__title">Welcome to Zenter</h1>
         <p class="hm-auth__subtitle">Sign in with your mobile number to find your exam centre mates.</p>
 
         <!-- STEP 1 — Phone -->
@@ -47,16 +65,18 @@
               />
             </div>
             <span class="hm-help">Your number will not be displayed without your mutual acceptance</span>
-            <span class="hm-help">We'll send you a 6-digit verification code.</span>
             <p class="text-danger small mt-2" id="hm-error-phone" role="alert" hidden></p>
           </div>
+
+          <!-- Visible reCAPTCHA — temporary debug; widget renders here after Send OTP click -->
+          <div id="hm-recaptcha-container"></div>
 
           <button type="submit" class="hm-btn hm-btn--primary hm-btn--block hm-btn--lg" id="hm-send-otp">
             Send OTP
           </button>
 
           <p class="hm-text-subtle hm-text-center" style="margin-top: 16px; font-size: var(--hm-text-xs);">
-            By continuing you agree to our <a href="/index.html#terms">Terms</a> and <a href="/index.html#privacy">Privacy Policy</a>.
+            By continuing you agree to our <a href="/terms.html">Terms and Conditions</a> and <a href="/privacy.html">Privacy Policy</a>.
           </p>
         </form>
 
@@ -80,15 +100,13 @@
           <button type="button" class="hm-btn hm-btn--ghost hm-btn--block" id="hm-otp-back" style="margin-top: 12px;">Change number</button>
         </form>
 
-        <!-- reCAPTCHA disabled — container kept for Firebase API compatibility -->
-        <div id="hm-recaptcha-container" aria-hidden="true"></div>
       </div>
     </section>
 
     <aside class="hm-auth__aside" aria-hidden="true">
       <div class="hm-auth__aside-inner">
-        <h2>One small step before exam day.</h2>
-        <p>HallMate helps you discover students in the same centre, share travel and stay, and walk in together.</p>
+        <h2>Find someone going to your exam centre.</h2>
+        <p>No more wasting your last week prep time, searching through random WhatsApp and Telegram groups with unverified users. Here at Zenter, we help you find the right people going to the same centre as you!</p>
         <ul>
           <li>Phone-verified, real students only</li>
           <li>Numbers reveal on mutual consent</li>

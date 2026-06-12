@@ -88,6 +88,16 @@ html, body { overflow-x: hidden; max-width: 100%; }
   .hm-dashboard { grid-template-columns: 1fr; }
   .hm-sidebar   { position: static; top: auto; }
 
+  /* Filter sidebar: hidden on mobile by default, toggled via button */
+  #hm-filter-aside {
+    display: none;
+    margin-bottom: var(--hm-space-4);
+  }
+  #hm-filter-aside.is-open { display: block; }
+
+  /* Show filter toggle button only on mobile */
+  .hm-filter-toggle { display: inline-flex !important; }
+
   .hm-sidebar__fields {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
@@ -223,6 +233,22 @@ html, body { overflow-x: hidden; max-width: 100%; }
 ============================================================ */
 @media (min-width: 1200px) {
   .hm-grid-cards { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+}
+
+/* ============================================================
+   ≥ 1440px — LARGE DESKTOP: 3-column card grid, wider container
+============================================================ */
+@media (min-width: 1440px) {
+  .hm-container { max-width: 1320px; }
+  .hm-grid-cards { grid-template-columns: repeat(3, 1fr); }
+  .hm-dashboard { grid-template-columns: 260px 1fr; gap: var(--hm-space-5); }
+}
+
+/* ============================================================
+   769px–991px — TABLET: 2-column card grid
+============================================================ */
+@media (min-width: 769px) and (max-width: 991.98px) {
+  .hm-grid-cards { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ============================================================
