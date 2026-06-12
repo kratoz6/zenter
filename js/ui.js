@@ -36,6 +36,36 @@ export async function mountChrome() {
   ]);
   wireNavbarToggle();
   wireAvatarDropdown();
+  wirePoliciesDropdown();
+}
+
+// Wires the "Policies & Info" mega-menu in the navbar. Always present on every
+// page (logged-in and logged-out) so payment-gateway reviewers and end users
+// can reach every legal/policy page from one click.
+export function wirePoliciesDropdown() {
+  const btn      = document.getElementById('hm-policies-btn');
+  const dropdown = document.getElementById('hm-policies-dropdown');
+  if (!btn || !dropdown) return;
+  if (btn.dataset.hmDropdownWired === '1') return;
+  btn.dataset.hmDropdownWired = '1';
+
+  const open   = () => { dropdown.classList.add('is-open');    btn.setAttribute('aria-expanded', 'true');  };
+  const close  = () => { dropdown.classList.remove('is-open'); btn.setAttribute('aria-expanded', 'false'); };
+  const toggle = () => dropdown.classList.contains('is-open') ? close() : open();
+
+  btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+
+  document.addEventListener('click', (e) => {
+    if (!dropdown.classList.contains('is-open')) return;
+    if (btn.closest('.hm-nav-policies').contains(e.target)) return;
+    close();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !dropdown.classList.contains('is-open')) return;
+    close();
+    btn.focus();
+  });
 }
 
 // Hamburger / mobile-drawer wiring. Idempotent — safe to call multiple times

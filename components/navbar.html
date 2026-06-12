@@ -21,6 +21,39 @@
         onclick="history.length>1?history.back():window.location.href='/dashboard.html'"
         hidden>← Back</button>
 
+      <!-- Policies & Info mega-menu — always visible (logged-in + logged-out).
+           Required for payment-gateway compliance review: every legal/policy
+           page is reachable from the top navbar in one click. -->
+      <div class="hm-nav-policies">
+        <button
+          type="button"
+          id="hm-policies-btn"
+          class="hm-nav-profile__btn"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="hm-policies-dropdown"
+          aria-label="Policies and information menu"
+        >
+          <span class="hm-nav-policies__label">Policies &amp; Info</span>
+          <span class="hm-nav-profile__chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <ul class="hm-nav-profile__dropdown hm-nav-policies__dropdown" id="hm-policies-dropdown" role="menu">
+          <li class="hm-nav-policies__heading" role="presentation">About Zenter</li>
+          <li role="none"><a href="/about.html"        class="hm-nav-profile__item" role="menuitem">🏢 About us</a></li>
+          <li role="none"><a href="/plus.html"         class="hm-nav-profile__item" role="menuitem">⭐ Zenter Plus — ₹49</a></li>
+          <li role="none"><a href="/contact.html"      class="hm-nav-profile__item" role="menuitem">📞 Contact us</a></li>
+          <li role="none"><a href="/faq.html"          class="hm-nav-profile__item" role="menuitem">❓ FAQ</a></li>
+
+          <li class="hm-nav-policies__heading" role="presentation">Legal &amp; Policies</li>
+          <li role="none"><a href="/refund.html"        class="hm-nav-profile__item" role="menuitem">↩️ Refund Policy</a></li>
+          <li role="none"><a href="/cancellation.html"  class="hm-nav-profile__item" role="menuitem">✖ Cancellation Policy</a></li>
+          <li role="none"><a href="/terms.html"         class="hm-nav-profile__item" role="menuitem">📄 Terms &amp; Conditions</a></li>
+          <li role="none"><a href="/privacy.html"       class="hm-nav-profile__item" role="menuitem">🔒 Privacy Policy</a></li>
+          <li role="none"><a href="/community.html"     class="hm-nav-profile__item" role="menuitem">🤝 Community Guidelines</a></li>
+        </ul>
+      </div>
+
       <!-- 1. Mobile CTA (logged-out, always visible on mobile) -->
       <div class="hm-nav-cta" data-auth="logged-out">
         <a href="/login.html" class="hm-btn hm-btn--primary hm-btn--xs" style="white-space:nowrap;">Signup / Login</a>

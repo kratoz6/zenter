@@ -209,6 +209,46 @@
 .hm-nav-profile__item--danger { color: var(--hm-danger); }
 .hm-nav-profile__item--danger:hover { background: #FEE2E2; color: var(--hm-danger); }
 
+/* ── Policies & Info mega-menu (always visible in navbar) ───────────────── */
+.hm-nav-policies { position: relative; }
+.hm-nav-policies__label {
+  font-size: var(--hm-text-sm);
+  font-weight: 600;
+  color: var(--hm-text);
+  letter-spacing: 0.01em;
+}
+.hm-nav-policies__dropdown {
+  right: auto;
+  left: 0;
+  min-width: 240px;
+  padding: var(--hm-space-2) 0;
+}
+@media (max-width: 768px) {
+  .hm-nav-policies__dropdown {
+    right: 0;
+    left: auto;
+  }
+}
+.hm-nav-policies__heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hm-text-subtle);
+  padding: 8px 16px 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--hm-border);
+}
+.hm-nav-policies__heading:first-child {
+  margin-top: 0;
+  border-top: none;
+}
+/* On small screens, abbreviate label to save space */
+@media (max-width: 480px) {
+  .hm-nav-policies__label { display: none; }
+  .hm-nav-policies__btn::before { content: "📋"; font-size: 16px; }
+}
+
 .hm-nav-toggle {
   display: none;
   width: 44px; height: 44px;
