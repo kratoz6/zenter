@@ -667,12 +667,16 @@ async function loadExams() {
   </div>`;
 }
 
+const ALL_EXAM_TYPES = ['NEET UG', 'NEET PG', 'UPSC CMS', 'INICET', 'NEET MDS', 'NEET SS'];
+
 async function loadAnalytics() {
   const el = document.getElementById('adm-analytics-content');
   const { getAnalyticsData, getAdminStats } = await import('./supabase.js');
   const [statsRes, analyticsRes] = await Promise.all([getAdminStats(), getAnalyticsData()]);
   const s = statsRes.data || {};
   const a = analyticsRes.data || {};
+  // Ensure all known exam types appear (0 when no users exist yet)
+  a.byExam = { ...Object.fromEntries(ALL_EXAM_TYPES.map(t => [t, 0])), ...a.byExam };
   el.innerHTML = `
     <!-- Key metrics row -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px;">
