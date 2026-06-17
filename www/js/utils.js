@@ -71,18 +71,51 @@ export function currentRoute() {
   return file.replace('.html', '') || 'index';
 }
 
-// Show a full-page suspension screen and return true if the account is suspended.
+// Show a blurred-background suspension overlay and return true if account is suspended.
 export function checkSuspended(me) {
   if (me?.account_status !== 'suspended') return false;
-  document.body.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;text-align:center;background:var(--hm-bg,#f8fafc);">
-      <div style="font-size:52px;margin-bottom:20px;">🚫</div>
-      <h2 style="font-size:20px;font-weight:700;color:var(--hm-text,#0f172a);margin-bottom:12px;">Account Suspended</h2>
-      <p style="color:var(--hm-text-muted,#64748b);font-size:15px;max-width:320px;line-height:1.7;margin:0;">
-        Your account has been suspended due to suspicious activity.<br><br>
-        Appeal to <a href="mailto:support@zenter.in" style="color:var(--hm-primary,#2563eb);font-weight:600;">support@zenter.in</a>
-      </p>
+
+  const overlay = document.createElement('div');
+  overlay.id = 'hm-suspension-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);background:rgba(15,23,42,0.6);';
+
+  overlay.innerHTML = `
+    <div style="background:var(--hm-surface,#fff);border-radius:20px;padding:36px 28px;max-width:340px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.3);">
+      <div style="font-size:48px;margin-bottom:16px;">🚫</div>
+      <h2 style="font-size:20px;font-weight:700;color:var(--hm-text,#0f172a);margin:0 0 10px;">Account Suspended</h2>
+      <p style="color:var(--hm-text-muted,#64748b);font-size:14px;line-height:1.7;margin:0 0 24px;">Your account has been suspended due to suspicious activity.</p>
+      <button id="hm-appeal-btn" style="display:block;width:100%;background:var(--hm-primary,#2563eb);color:#fff;border:none;border-radius:10px;padding:14px 24px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:opacity .15s;">
+        Appeal to Support
+      </button>
+      <p id="hm-appeal-msg" style="font-size:13px;color:var(--hm-text-muted,#64748b);margin:0;min-height:18px;"></p>
     </div>`;
+
+  document.body.appendChild(overlay);
+
+  const btn = overlay.querySelector('#hm-appeal-btn');
+  const msg = overlay.querySelector('#hm-appeal-msg');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btn.textContent = 'Submitting…';
+    try {
+      const { submitSuspensionAppeal } = await import('./supabase.js');
+      const { error } = await submitSuspensionAppeal(me.id);
+      if (error) throw error;
+      btn.textContent = 'Appeal Submitted ✓';
+      btn.style.background = '#16a34a';
+      btn.style.opacity = '1';
+      msg.textContent = 'We\'ll review and reach you at support@zenter.in';
+    } catch {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.textContent = 'Appeal to Support';
+      msg.style.color = '#dc2626';
+      msg.textContent = 'Failed. Email support@zenter.in directly.';
+    }
+  });
+
   return true;
 }
 

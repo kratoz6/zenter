@@ -84,7 +84,7 @@ export async function getAdminStats() {
 /** Recent users list for the admin Users section — includes moderation fields. */
 export function getRecentUsers(limit = 50, { seededOnly = false, excludeSeeded = false } = {}) {
   let q = from('users')
-    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, role, is_seeded_user, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, suspicious_flags, device_fingerprint, created_at')
+    .select('id, full_name, gender, phone, exam_type, state, district, exam_centre_state, exam_centre_district, exam_center, profile_completed, is_profile_paused, account_status, appeal_submitted_at, role, is_seeded_user, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, suspicious_flags, device_fingerprint, created_at')
     .order('created_at', { ascending: false })
     .limit(limit);
   if (seededOnly)    q = q.eq('is_seeded_user', true);
@@ -114,6 +114,14 @@ export function adminSetUserStatus(targetId, requesterPhone, status) {
       p_status:          status,
     })
   );
+}
+
+export function submitSuspensionAppeal(userId) {
+  return query(supabase.rpc('submit_suspension_appeal', { p_user_id: userId }));
+}
+
+export function adminClearAppeal(userId) {
+  return query(from('users').update({ appeal_submitted_at: null }).eq('id', userId));
 }
 
 export function adminSetUserPaused(targetId, requesterPhone, paused) {

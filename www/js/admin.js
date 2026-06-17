@@ -154,7 +154,7 @@ async function loadUsers() {
   allUsers = data;
   renderFilteredUsers();
   const rerender = debounce(renderFilteredUsers, 180);
-  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender']
+  ['adm-user-search','adm-user-filter-exam','adm-user-filter-gender','adm-user-filter-status']
     .forEach(id => document.getElementById(id)?.addEventListener('input', rerender));
 }
 
@@ -162,10 +162,13 @@ function renderFilteredUsers() {
   const search  = (document.getElementById('adm-user-search')?.value || '').toLowerCase();
   const exam    = document.getElementById('adm-user-filter-exam')?.value    || '';
   const gender  = document.getElementById('adm-user-filter-gender')?.value  || '';
+  const status  = document.getElementById('adm-user-filter-status')?.value  || '';
   const filtered = allUsers.filter(u => {
     if (search && !`${u.full_name} ${u.phone}`.toLowerCase().includes(search)) return false;
     if (exam   && u.exam_type !== exam)  return false;
     if (gender && u.gender   !== gender) return false;
+    if (status === 'suspended'     && u.account_status !== 'suspended') return false;
+    if (status === 'pending-appeal' && !u.appeal_submitted_at) return false;
     return true;
   });
   const el = document.getElementById('adm-users-list');
@@ -1245,6 +1248,19 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
+  // Dismiss a pending suspension appeal
+  if (action === 'dismiss-appeal') {
+    btn.disabled = true;
+    const { adminClearAppeal } = await import('./supabase.js');
+    const { error } = await adminClearAppeal(id);
+    if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+    const u = allUsers.find(u => u.id === id);
+    if (u) u.appeal_submitted_at = null;
+    renderFilteredUsers();
+    toast('Appeal dismissed ✓', 'success');
+    return;
+  }
+
   // Suspend / Unsuspend from Users panel (sets account_status — user sees suspension message)
   if (action === 'suspend-user' || action === 'unsuspend-user') {
     const suspending = action === 'suspend-user';
@@ -1257,7 +1273,10 @@ document.addEventListener('click', async (e) => {
       const { error } = await adminSetUserStatus(id, adminPhone, suspending ? 'suspended' : 'active');
       if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
       const u = allUsers.find(u => u.id === id);
-      if (u) u.account_status = suspending ? 'suspended' : 'active';
+      if (u) {
+        u.account_status = suspending ? 'suspended' : 'active';
+        if (!suspending) u.appeal_submitted_at = null;
+      }
       renderFilteredUsers();
       toast(suspending ? 'User suspended ✓' : 'User unsuspended ✓', 'success');
     }); return;
@@ -1581,6 +1600,12 @@ function renderUsersTable(users, withActions = false) {
                data-action="${u.account_status === 'suspended' ? 'unsuspend-user' : 'suspend-user'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                ${u.account_status === 'suspended' ? 'Unsuspend' : 'Suspend'}
              </button>
+             ${u.appeal_submitted_at
+               ? `<button class="adm-btn adm-btn--sm" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;"
+                    data-action="dismiss-appeal" data-id="${esc(u.id)}">
+                    Dismiss Appeal
+                  </button>`
+               : ''}
              <button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                Delete
@@ -1620,7 +1645,12 @@ function renderUsersTable(users, withActions = false) {
                  ${u.nta_application_number ? `<div style="font-size:10px;color:var(--adm-text-dim);margin-top:2px;font-family:monospace;">${esc(u.nta_application_number)}</div>` : ''}`
               : '<span style="color:var(--adm-text-dim);">Phone only</span>'}
       </td>
-      <td><span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span></td>
+      <td>
+        <span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span>
+        ${u.appeal_submitted_at
+          ? `<span class="adm-pill" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;display:block;margin-top:3px;">⚠️ Appeal</span>`
+          : ''}
+      </td>
       ${suspCell}
       <td style="font-size:11px">${esc(fmtDate(u.created_at))}</td>
       ${actions}
