@@ -134,8 +134,7 @@ Key RPCs:
 | RPC | Purpose |
 |---|---|
 | `admin_set_user_status` | Suspend / unsuspend a user |
-| `admin_dismiss_appeal` | Unsuspend + clear appeal + set suspension_warning |
-| `submit_suspension_appeal` | User submits appeal (sets appeal_submitted_at) |
+| `admin_dismiss_appeal` | Unsuspend + set suspension_warning (user sees one-time warning) |
 | `dismiss_suspension_warning` | User acknowledges warning (clears flag) |
 | `flag_rapid_reveal` | Sets rapid_reveal suspicious flag |
 | `increment_reveal_count` | Tracks contact reveals |
@@ -149,11 +148,9 @@ Key RPCs:
 
 ### User states and what they see
 
-1. **Suspended, no appeal** → blur overlay: "Dear Aspirant, Our system has detected an suspicious activity that your actions violate the Community Guidelines." + **Appeal to Support** button + Sign out link.
+1. **Suspended** → blur overlay: "Dear Aspirant, Our system has detected an suspicious activity that your actions violate the Community Guidelines." + **Contact Support** button (mailto:support@zenter.in) + Sign out link.
 
-2. **Suspended, appeal submitted** → same overlay but shows green "✓ Appeal Submitted — We'll review and let you know." No repeat button.
-
-3. **Appeal dismissed by admin** → user is unsuspended (`account_status = 'active'`), `suspension_warning = true`. On next page load: warning overlay "Dear Aspirant, Your matching function has been restored. Please regulate according to the guidelines and wish you a happy Zentering!" + **I Understand** button (clears flag, never shown again).
+2. **Unsuspended with warning by admin** → user is unsuspended (`account_status = 'active'`), `suspension_warning = true`. On next page load: warning overlay "Dear Aspirant, Your matching function has been restored. Please regulate according to the guidelines and wish you a happy Zentering!" + **I Understand** button (clears flag, never shown again).
 
 ### Where it's enforced
 

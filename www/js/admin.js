@@ -167,8 +167,7 @@ function renderFilteredUsers() {
     if (search && !`${u.full_name} ${u.phone}`.toLowerCase().includes(search)) return false;
     if (exam   && u.exam_type !== exam)  return false;
     if (gender && u.gender   !== gender) return false;
-    if (status === 'suspended'     && u.account_status !== 'suspended') return false;
-    if (status === 'pending-appeal' && !u.appeal_submitted_at) return false;
+    if (status === 'suspended' && u.account_status !== 'suspended') return false;
     return true;
   });
   const el = document.getElementById('adm-users-list');
@@ -1248,20 +1247,6 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
-  // Dismiss appeal — unsuspends the user and sets a one-time warning they see on next login
-  if (action === 'dismiss-appeal') {
-    confirm_({ title: 'Dismiss appeal & restore access?', msg: 'User will be unsuspended and shown a behavior warning on next login.', danger: false }, async () => {
-      btn.disabled = true;
-      const { adminDismissAppeal } = await import('./supabase.js');
-      const { error } = await adminDismissAppeal(id, adminPhone);
-      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
-      const u = allUsers.find(u => u.id === id);
-      if (u) { u.appeal_submitted_at = null; u.account_status = 'active'; u.suspension_warning = true; }
-      renderFilteredUsers();
-      toast('Appeal dismissed — user restored with warning ✓', 'success');
-    }); return;
-  }
-
   // Suspend / Unsuspend from Users panel (sets account_status — user sees suspension message)
   if (action === 'suspend-user' || action === 'unsuspend-user') {
     const suspending = action === 'suspend-user';
@@ -1601,12 +1586,6 @@ function renderUsersTable(users, withActions = false) {
                data-action="${u.account_status === 'suspended' ? 'unsuspend-user' : 'suspend-user'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                ${u.account_status === 'suspended' ? 'Unsuspend' : 'Suspend'}
              </button>
-             ${u.appeal_submitted_at
-               ? `<button class="adm-btn adm-btn--sm" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;"
-                    data-action="dismiss-appeal" data-id="${esc(u.id)}">
-                    Dismiss Appeal
-                  </button>`
-               : ''}
              <button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                Delete
@@ -1648,9 +1627,6 @@ function renderUsersTable(users, withActions = false) {
       </td>
       <td>
         <span class="adm-pill adm-pill--${esc(display)}">${esc(display)}</span>
-        ${u.appeal_submitted_at
-          ? `<span class="adm-pill" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;display:block;margin-top:3px;">⚠️ Appeal</span>`
-          : ''}
       </td>
       ${suspCell}
       <td style="font-size:11px">${esc(fmtDate(u.created_at))}</td>
