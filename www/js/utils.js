@@ -84,10 +84,16 @@ export function checkSuspended(me) {
       <div style="font-size:48px;margin-bottom:16px;">🚫</div>
       <h2 style="font-size:20px;font-weight:700;color:var(--hm-text,#0f172a);margin:0 0 10px;">Account Suspended</h2>
       <p style="color:var(--hm-text-muted,#64748b);font-size:14px;line-height:1.7;margin:0 0 24px;">Your account has been suspended due to suspicious activity.</p>
-      <button id="hm-appeal-btn" style="display:block;width:100%;background:var(--hm-primary,#2563eb);color:#fff;border:none;border-radius:10px;padding:14px 24px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:opacity .15s;">
-        Appeal to Support
-      </button>
-      <p id="hm-appeal-msg" style="font-size:13px;color:var(--hm-text-muted,#64748b);margin:0 0 16px;min-height:18px;"></p>
+      ${me.appeal_submitted_at
+        ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+             <p style="margin:0;font-size:14px;font-weight:600;color:#15803d;">✓ Appeal Submitted</p>
+             <p style="margin:4px 0 0;font-size:13px;color:#166534;">Waiting for review — we'll reach you at support@zenter.in</p>
+           </div>`
+        : `<button id="hm-appeal-btn" style="display:block;width:100%;background:var(--hm-primary,#2563eb);color:#fff;border:none;border-radius:10px;padding:14px 24px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:opacity .15s;">
+             Appeal to Support
+           </button>
+           <p id="hm-appeal-msg" style="font-size:13px;color:var(--hm-text-muted,#64748b);margin:0 0 16px;min-height:18px;"></p>`
+      }
       <button id="hm-suspension-signout" style="background:none;border:none;color:var(--hm-text-muted,#64748b);font-size:13px;cursor:pointer;text-decoration:underline;padding:0;">
         Sign out
       </button>
@@ -95,35 +101,36 @@ export function checkSuspended(me) {
 
   document.body.appendChild(overlay);
 
-  const btn     = overlay.querySelector('#hm-appeal-btn');
-  const msg     = overlay.querySelector('#hm-appeal-msg');
   const signout = overlay.querySelector('#hm-suspension-signout');
-
   signout.addEventListener('click', async () => {
     const { logout } = await import('./auth.js');
     await logout();
   });
 
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    btn.style.opacity = '0.7';
-    btn.textContent = 'Submitting…';
-    try {
-      const { submitSuspensionAppeal } = await import('./supabase.js');
-      const { error } = await submitSuspensionAppeal(me.id);
-      if (error) throw error;
-      btn.textContent = 'Appeal Submitted ✓';
-      btn.style.background = '#16a34a';
-      btn.style.opacity = '1';
-      msg.textContent = 'We\'ll review and reach you at support@zenter.in';
-    } catch {
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.textContent = 'Appeal to Support';
-      msg.style.color = '#dc2626';
-      msg.textContent = 'Failed. Email support@zenter.in directly.';
-    }
-  });
+  const btn = overlay.querySelector('#hm-appeal-btn');
+  if (btn) {
+    const msg = overlay.querySelector('#hm-appeal-msg');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.style.opacity = '0.7';
+      btn.textContent = 'Submitting…';
+      try {
+        const { submitSuspensionAppeal } = await import('./supabase.js');
+        const { error } = await submitSuspensionAppeal(me.id);
+        if (error) throw error;
+        btn.textContent = 'Appeal Submitted ✓';
+        btn.style.background = '#16a34a';
+        btn.style.opacity = '1';
+        msg.textContent = 'We\'ll review and reach you at support@zenter.in';
+      } catch {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.textContent = 'Appeal to Support';
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Failed. Email support@zenter.in directly.';
+      }
+    });
+  }
 
   return true;
 }

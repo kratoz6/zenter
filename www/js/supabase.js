@@ -37,7 +37,7 @@ export function from(table) {
 export function getUserByPhone(phone) {
   return query(
     from('users')
-      .select('id, profile_completed, exam_type, role, state, exam_centre_state, plus_member, contact_reveals_used, is_verified_aspirant, account_status')
+      .select('id, profile_completed, exam_type, role, state, exam_centre_state, plus_member, contact_reveals_used, is_verified_aspirant, account_status, appeal_submitted_at')
       .eq('phone', phone)
       .maybeSingle()
   );
@@ -170,7 +170,7 @@ export function getProfileByPhone(phone) {
         'id, phone, full_name, gender, state, district, ' +
         'exam_centre_state, exam_centre_district, exam_center, exam_type, ' +
         'college, travel_mode, stay_plan, bio, ' +
-        'profile_completed, is_profile_paused, account_status, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, created_at'
+        'profile_completed, is_profile_paused, account_status, appeal_submitted_at, plus_member, contact_reveals_used, is_verified_aspirant, verification_requested, verification_rejected, nta_application_number, created_at'
       )
       .eq('phone', phone)
       .maybeSingle()
