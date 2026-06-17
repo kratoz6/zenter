@@ -1245,6 +1245,24 @@ document.addEventListener('click', async (e) => {
     }); return;
   }
 
+  // Suspend / Unsuspend from Users panel (sets account_status — user sees suspension message)
+  if (action === 'suspend-user' || action === 'unsuspend-user') {
+    const suspending = action === 'suspend-user';
+    confirm_(suspending
+      ? { title: 'Suspend this user?', msg: 'They will be locked out and shown a suspension message.', danger: true }
+      : { title: 'Unsuspend this user?', msg: 'Restores their full access to the app.', danger: false },
+    async () => {
+      btn.disabled = true;
+      const { adminSetUserStatus } = await import('./supabase.js');
+      const { error } = await adminSetUserStatus(id, adminPhone, suspending ? 'suspended' : 'active');
+      if (error) { toast('Error: ' + error.message, 'error'); btn.disabled = false; return; }
+      const u = allUsers.find(u => u.id === id);
+      if (u) u.account_status = suspending ? 'suspended' : 'active';
+      renderFilteredUsers();
+      toast(suspending ? 'User suspended ✓' : 'User unsuspended ✓', 'success');
+    }); return;
+  }
+
   // Suspend reported user directly from Reports page
   if (action === 'suspend-reported' || action === 'reactivate-reported') {
     const pausing = action === 'suspend-reported';
@@ -1559,7 +1577,11 @@ function renderUsersTable(users, withActions = false) {
              </button>`
           : ''}
         ${!isPrivileged
-          ? `<button class="adm-btn adm-btn--sm adm-btn--danger"
+          ? `<button class="adm-btn adm-btn--sm ${u.account_status === 'suspended' ? 'adm-btn--ok' : 'adm-btn--warn'}"
+               data-action="${u.account_status === 'suspended' ? 'unsuspend-user' : 'suspend-user'}" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
+               ${u.account_status === 'suspended' ? 'Unsuspend' : 'Suspend'}
+             </button>
+             <button class="adm-btn adm-btn--sm adm-btn--danger"
                data-action="delete-user" data-id="${esc(u.id)}" data-name="${esc(u.full_name||'User')}">
                Delete
              </button>`
