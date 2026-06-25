@@ -807,7 +807,7 @@ function renderRequests() {
       ? `<div class="hm-empty" style="grid-column:1/-1;">
            <div class="hm-empty__icon" aria-hidden="true">🤝</div>
            <h3>No pending requests</h3>
-           <p class="hm-text-muted">When HallMates send you connection requests, they'll appear here.</p>
+           <p class="hm-text-muted">When Zenter Aspirants send you Co-ordination requests, they'll appear here.</p>
          </div>`
       : `<div style="grid-column:1/-1;text-align:center;padding:var(--hm-space-7) 0;">
            <div class="hm-loader__spinner" style="margin:0 auto;"></div>
