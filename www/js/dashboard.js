@@ -769,7 +769,7 @@ function updateCount(n) {
   if (!el) return;
   if (allUsers.length === 0) { el.textContent = ''; return; }
   const stateSuffix = myExamCentreState ? ` in ${myExamCentreState}` : '';
-  el.textContent = `${n} centre ${n === 1 ? 'mate' : 'mates'} found${stateSuffix}`;
+  el.textContent = `${n} ${n === 1 ? 'Aspirant' : 'Aspirants'} found${stateSuffix}`;
 }
 
 function updateNavBadge() {
@@ -807,7 +807,7 @@ function renderRequests() {
       ? `<div class="hm-empty" style="grid-column:1/-1;">
            <div class="hm-empty__icon" aria-hidden="true">🤝</div>
            <h3>No pending requests</h3>
-           <p class="hm-text-muted">When HallMates send you connection requests, they'll appear here.</p>
+           <p class="hm-text-muted">When Zenter Aspirants send you Co-ordination requests, they'll appear here.</p>
          </div>`
       : `<div style="grid-column:1/-1;text-align:center;padding:var(--hm-space-7) 0;">
            <div class="hm-loader__spinner" style="margin:0 auto;"></div>
@@ -1173,7 +1173,7 @@ function cardFooterHtml(user) {
   switch (rel.status) {
     case REL.NONE:
       cta = `<button class="hm-btn hm-btn--primary hm-btn--sm"
-               data-conn-action="connect" data-user-id="${uid}">Connect</button>`;
+               data-conn-action="connect" data-user-id="${uid}">Request</button>`;
       break;
     case REL.PENDING_OUT:
       cta = `<span class="hm-badge hm-badge--info" style="font-size:11px;">Sent</span>`;

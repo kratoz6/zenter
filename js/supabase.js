@@ -210,6 +210,29 @@ export function getAllUsers(examType = 'NEET UG') {
   return query(q.order('created_at', { ascending: false }));
 }
 
+/**
+ * Total aspirant count for the public landing page — mirrors the Find Mates
+ * feed (real completed/active profiles + seeded profiles) across ALL exams.
+ * Uses HEAD counts so no row data is transferred. Returns { data: number }.
+ */
+export async function getTotalAspirantCount() {
+  const usersQ = from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_completed', true)
+    .or('is_profile_paused.is.null,is_profile_paused.eq.false')
+    .or('account_status.is.null,account_status.eq.active');
+
+  const seededQ = from('seeded_users')
+    .select('id', { count: 'exact', head: true });
+
+  const [u, s] = await Promise.all([usersQ, seededQ]);
+  const err = u.error || s.error;
+  return {
+    data: (u.count || 0) + (s.count || 0),
+    error: err ? toUiError(err) : null,
+  };
+}
+
 // ─── Seeded / demo users (separate table) ────────────────────────────────────
 
 /** Fetch active seeded users for the find-mates feed. RLS handles paused/inactive. */
