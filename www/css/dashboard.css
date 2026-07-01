@@ -127,8 +127,21 @@
   border-bottom-color: var(--hm-primary);
 }
 @media (max-width: 479px) {
-  .hm-tabs { gap: 0; }
-  .hm-tab { padding: var(--hm-space-2) var(--hm-space-2); font-size: var(--hm-text-xs, 0.75rem); flex: 1; min-width: 0; white-space: nowrap; }
+  .hm-tabs {
+    gap: var(--hm-space-2);          /* breathing room between tabs (was 0) */
+    justify-content: flex-start;
+    overflow-x: auto;                /* swipe if 4 labels don't all fit */
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;           /* hide scrollbar (Firefox) */
+  }
+  .hm-tabs::-webkit-scrollbar { display: none; }  /* hide scrollbar (WebKit) */
+  .hm-tab {
+    padding: var(--hm-space-2) var(--hm-space-3);
+    font-size: var(--hm-text-xs, 0.75rem);
+    flex: 1 0 auto;                  /* fill row if they fit, else natural width */
+    min-width: 0;
+    white-space: nowrap;
+  }
 }
 
 .hm-dashboard {
