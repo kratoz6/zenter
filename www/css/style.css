@@ -226,3 +226,7 @@ html.native-app .hm-mate__bio {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Native app: never allow sideways scrolling/overflow — content that would
+   run off the right edge is contained instead (professional mobile feel). */
+html.native-app body { overflow-x: hidden; }

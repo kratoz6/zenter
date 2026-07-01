@@ -362,6 +362,10 @@
   color: var(--hm-text); margin: 0 0 1px;
   overflow: hidden;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  /* Long, space-less centre codes/names must break instead of pushing the
+     card wider than the screen (which caused horizontal cut-off on phones). */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .hm-mate__centre-loc { font-size: 11px; color: var(--hm-text-muted); margin: 0; }
 
@@ -640,3 +644,8 @@
 .hm-kv .hm-select { width: 100%; }
 /* Bio textarea — shorter than the default 120px so it doesn't dominate the card */
 .hm-profile-bio { min-height: 80px !important; resize: vertical; }
+
+/* Mobile: filter fields must never exceed the sidebar panel width. */
+.hm-sidebar__fields .hm-field { min-width: 0; }
+.hm-sidebar .hm-select,
+.hm-sidebar .hm-input { max-width: 100%; }
