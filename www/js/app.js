@@ -25,6 +25,14 @@ async function bootstrap() {
   const route = currentRoute();
   document.body.dataset.route = route;
 
+  // Native app (Capacitor) detection — adds `native-app` to <html> so app-only
+  // styling (safe-area insets, disabled web-tells) applies inside the Android
+  // app but never on the website. Web browsers have no window.Capacitor.
+  if (window.Capacitor?.isNativePlatform?.()) {
+    document.documentElement.classList.add('native-app');
+    initNativeShell();
+  }
+
   await mountChrome();
   highlightActiveNav(route);
   wireGlobalNav();
@@ -39,6 +47,37 @@ async function bootstrap() {
   if (init) {
     try { await init(); }
     catch (err) { console.error(`[app] init error on ${route}`, err); }
+  }
+}
+
+// ─── Native shell (Capacitor) ──────────────────────────────────────────────────
+// Android hardware Back button: navigate back through history when possible,
+// otherwise send the app to the background (like a normal Android app) instead
+// of exiting/blanking. Uses the injected Capacitor.Plugins.App (no bundler).
+function initNativeShell() {
+  const P = window.Capacitor?.Plugins || {};
+
+  // Android hardware Back button.
+  const CapApp = P.App;
+  if (CapApp?.addListener) {
+    CapApp.addListener('backButton', ({ canGoBack }) => {
+      if (canGoBack || window.history.length > 1) {
+        window.history.back();
+      } else {
+        // On a root screen (nothing to go back to) — minimise, don't kill.
+        if (CapApp.minimizeApp) CapApp.minimizeApp();
+        else if (CapApp.exitApp) CapApp.exitApp();
+      }
+    });
+  }
+
+  // Status bar: solid white strip with dark icons (matches the light app
+  // header), sitting ABOVE the content rather than overlaying it.
+  const CapStatusBar = P.StatusBar;
+  if (CapStatusBar) {
+    CapStatusBar.setOverlaysWebView?.({ overlay: false }).catch(() => {});
+    CapStatusBar.setStyle?.({ style: 'LIGHT' }).catch(() => {}); // LIGHT = dark icons on light bg
+    CapStatusBar.setBackgroundColor?.({ color: '#ffffff' }).catch(() => {}); // Android only
   }
 }
 

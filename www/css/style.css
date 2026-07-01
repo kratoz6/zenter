@@ -187,3 +187,42 @@ a:hover { color: var(--hm-secondary-600); }
   overflow: hidden; clip: rect(0, 0, 0, 0);
   white-space: nowrap; border: 0;
 }
+
+/* ============================================================
+   NATIVE APP (Capacitor) — scoped to html.native-app only.
+   Applies inside the Android app; never affects the website.
+   ============================================================ */
+
+/* Safe-area insets: keep content clear of the status bar / notch /
+   gesture bar. Requires <meta viewport ... viewport-fit=cover> (already set). */
+html.native-app body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  /* Paint the status-bar strip with the app surface colour, not a gap. */
+  background-color: var(--hm-bg, #fff);
+}
+
+/* Kill the "this is a web page" tells inside the app. */
+html.native-app,
+html.native-app body {
+  /* No rubber-band overscroll glow / bounce. */
+  overscroll-behavior: none;
+  /* No long-press text selection or iOS-style callout on UI chrome. */
+  -webkit-user-select: none;
+  user-select: none;
+  /* No grey/blue tap-highlight flash on taps. */
+  -webkit-tap-highlight-color: transparent;
+  /* No long-press image/link save menu. */
+  -webkit-touch-callout: none;
+}
+
+/* Re-enable text selection where users genuinely need it
+   (typed inputs, chat messages, bios). */
+html.native-app input,
+html.native-app textarea,
+html.native-app [contenteditable],
+html.native-app .hm-chat-bubble,
+html.native-app .hm-mate__bio {
+  -webkit-user-select: text;
+  user-select: text;
+}

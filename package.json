@@ -18,6 +18,8 @@
     "@playwright/test": "^1.49.0"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/status-bar": "^8.0.2",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0"
   }
